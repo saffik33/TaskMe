@@ -37,9 +37,10 @@ app = FastAPI(
     redoc_url="/redoc" if docs_enabled else None,
 )
 
+frontend_url = os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=[frontend_url],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
