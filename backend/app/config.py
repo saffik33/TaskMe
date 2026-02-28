@@ -29,14 +29,16 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-if settings.JWT_SECRET_KEY == "CHANGE-ME-IN-PRODUCTION":
-    import warnings
-    warnings.warn(
-        "SECURITY WARNING: JWT_SECRET_KEY is set to the default placeholder. "
-        "Set a strong random secret in your .env file (e.g. openssl rand -hex 32). "
-        "The application will refuse to start with the default secret in production.",
-        stacklevel=1,
-    )
+
+def check_jwt_secret():
+    """Call at app startup (not import time) to validate JWT secret."""
     import os
-    if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENV", "").lower() in ("production", "prod"):
-        raise SystemExit("FATAL: JWT_SECRET_KEY must be changed from the default in production.")
+    if settings.JWT_SECRET_KEY == "CHANGE-ME-IN-PRODUCTION":
+        import warnings
+        warnings.warn(
+            "SECURITY WARNING: JWT_SECRET_KEY is set to the default placeholder. "
+            "Set a strong random secret via environment variable JWT_SECRET_KEY.",
+            stacklevel=2,
+        )
+        if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENV", "").lower() in ("production", "prod"):
+            raise SystemExit("FATAL: JWT_SECRET_KEY must be changed from the default in production.")
