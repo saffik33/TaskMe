@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -7,6 +9,8 @@ from pydantic import BaseModel
 from sqlmodel import select
 
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 from ..database import SessionDep
 from ..dependencies import CurrentUserDep
 from ..models.share import SharedList
@@ -43,20 +47,27 @@ def create_share_link(request: ShareRequest, session: SessionDep, current_user: 
     session.commit()
     session.refresh(shared)
 
-    url = f"{settings.FRONTEND_URL}/shared/{token}"
+    frontend_url = os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
+    url = f"{frontend_url}/shared/{token}"
     return {"token": token, "url": url}
 
 
 @router.get("/{token}", response_model=list[TaskPublic])
 def get_shared_tasks(token: str, session: SessionDep):
-    shared = session.exec(
-        select(SharedList).where(SharedList.share_token == token)
-    ).first()
-    if not shared:
-        raise HTTPException(status_code=404, detail="Share link not found")
-    if shared.expires_at and shared.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=410, detail="Share link has expired")
+    try:
+        shared = session.exec(
+            select(SharedList).where(SharedList.share_token == token)
+        ).first()
+        if not shared:
+            raise HTTPException(status_code=404, detail="Share link not found")
+        if shared.expires_at and shared.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=410, detail="Share link has expired")
 
-    task_ids = json.loads(shared.task_ids)
-    tasks = session.exec(select(Task).where(Task.id.in_(task_ids))).all()
-    return tasks
+        task_ids = json.loads(shared.task_ids)
+        tasks = session.exec(select(Task).where(Task.id.in_(task_ids))).all()
+        return tasks
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Share link error: %s", str(e))
+        raise HTTPException(status_code=500, detail=f"Share error: {str(e)}")
