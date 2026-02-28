@@ -60,8 +60,11 @@ def get_shared_tasks(token: str, session: SessionDep):
         ).first()
         if not shared:
             raise HTTPException(status_code=404, detail="Share link not found")
-        if shared.expires_at and shared.expires_at < datetime.now(timezone.utc):
-            raise HTTPException(status_code=410, detail="Share link has expired")
+        if shared.expires_at:
+            # Handle timezone-naive datetimes from migrated data
+            expires = shared.expires_at if shared.expires_at.tzinfo else shared.expires_at.replace(tzinfo=timezone.utc)
+            if expires < datetime.now(timezone.utc):
+                raise HTTPException(status_code=410, detail="Share link has expired")
 
         task_ids = json.loads(shared.task_ids)
         tasks = session.exec(select(Task).where(Task.id.in_(task_ids))).all()
