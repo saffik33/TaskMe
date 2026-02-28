@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from .config import settings, check_jwt_secret
-from .database import create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, seed_core_columns
+from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, seed_core_columns
 from .routers import auth, columns, export, parse, share, tasks
 
 limiter = Limiter(key_func=get_remote_address)
@@ -16,6 +16,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    check_database_url()
     check_jwt_secret()
     create_db_and_tables()
     migrate_custom_fields_column()

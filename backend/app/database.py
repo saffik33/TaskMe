@@ -23,6 +23,21 @@ def _build_engine():
 engine = _build_engine()
 
 
+def check_database_url():
+    """Re-read DATABASE_URL from OS env for Railway compatibility."""
+    import os
+    import logging
+    logger = logging.getLogger(__name__)
+    db_url = os.getenv("DATABASE_URL", "")
+    logger.info("DATABASE_URL from env: %s", "SET" if db_url else "NOT SET")
+    logger.info("DATABASE_URL from settings: %s", "postgresql" if "postgresql" in settings.DATABASE_URL else "sqlite")
+    if db_url and db_url != settings.DATABASE_URL:
+        settings.DATABASE_URL = db_url
+        global engine
+        engine = _build_engine()
+        logger.info("Engine rebuilt with DATABASE_URL from environment")
+
+
 def create_db_and_tables():
     # Import models so metadata is populated
     from .models import Task, SharedList, ColumnConfig, User  # noqa: F401
