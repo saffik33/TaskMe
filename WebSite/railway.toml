@@ -1,0 +1,5 @@
+[build]
+watchPatterns = ["WebSite/**"]
+
+[deploy]
+startCommand = "npx serve . -s -l $PORT"
