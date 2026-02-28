@@ -24,36 +24,45 @@ def _validate_password_complexity(password: str) -> str | None:
 
 @router.post("/register", response_model=UserPublic, status_code=201)
 def register(user_in: UserCreate, session: SessionDep):
-    password_error = _validate_password_complexity(user_in.password)
-    if password_error:
-        raise HTTPException(status_code=400, detail=password_error)
+    import logging
+    logger = logging.getLogger(__name__)
 
-    existing = session.exec(select(User).where(User.username == user_in.username)).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username already taken",
+    try:
+        password_error = _validate_password_complexity(user_in.password)
+        if password_error:
+            raise HTTPException(status_code=400, detail=password_error)
+
+        existing = session.exec(select(User).where(User.username == user_in.username)).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username already taken",
+            )
+
+        existing_email = session.exec(select(User).where(User.email == user_in.email)).first()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+
+        user = User(
+            username=user_in.username,
+            email=user_in.email,
+            hashed_password=hash_password(user_in.password),
         )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
-    existing_email = session.exec(select(User).where(User.email == user_in.email)).first()
-    if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
+        seed_core_columns_for_user(session, user.id)
 
-    user = User(
-        username=user_in.username,
-        email=user_in.email,
-        hashed_password=hash_password(user_in.password),
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-
-    seed_core_columns_for_user(session, user.id)
-
-    return user
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Register failed: %s", str(e))
+        raise HTTPException(status_code=500, detail=f"Registration error: {str(e)}")
 
 
 @router.post("/login")
