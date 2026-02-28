@@ -1,6 +1,4 @@
 from fastapi import APIRouter, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlmodel import select
 
 from ..auth import create_access_token, hash_password, verify_password
@@ -9,7 +7,6 @@ from ..dependencies import CurrentUserDep
 from ..models.user import User, UserCreate, UserLogin, UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 def _validate_password_complexity(password: str) -> str | None:
@@ -26,8 +23,7 @@ def _validate_password_complexity(password: str) -> str | None:
 
 
 @router.post("/register", response_model=UserPublic, status_code=201)
-@limiter.limit("5/minute")
-def register(request: Request, user_in: UserCreate, session: SessionDep):
+def register(user_in: UserCreate, session: SessionDep):
     password_error = _validate_password_complexity(user_in.password)
     if password_error:
         raise HTTPException(status_code=400, detail=password_error)
@@ -61,8 +57,7 @@ def register(request: Request, user_in: UserCreate, session: SessionDep):
 
 
 @router.post("/login")
-@limiter.limit("5/minute")
-def login(request: Request, credentials: UserLogin, session: SessionDep):
+def login(credentials: UserLogin, session: SessionDep):
     user = session.exec(select(User).where(User.username == credentials.username)).first()
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(

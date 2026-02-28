@@ -2,8 +2,6 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlmodel import select
 
 from ..database import SessionDep
@@ -12,7 +10,6 @@ from ..models.column_config import ColumnConfig
 from ..services.llm_service import parse_natural_language
 
 router = APIRouter(prefix="/parse", tags=["parse"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 class ParseRequest(BaseModel):
@@ -22,8 +19,7 @@ class ParseRequest(BaseModel):
 
 
 @router.post("")
-@limiter.limit("10/minute")
-def parse_text(request: Request, body: ParseRequest, session: SessionDep, current_user: CurrentUserDep):
+def parse_text(body: ParseRequest, session: SessionDep, current_user: CurrentUserDep):
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
