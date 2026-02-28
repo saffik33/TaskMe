@@ -38,9 +38,14 @@ app = FastAPI(
 )
 
 frontend_url = os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
+allowed_origins = [
+    frontend_url,
+    "https://frontend-production-c90f0.up.railway.app",
+    "http://localhost:5173",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
