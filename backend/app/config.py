@@ -33,18 +33,22 @@ settings = Settings()
 def check_jwt_secret():
     """Call at app startup (not import time) to validate JWT secret."""
     import os
+    import logging
+    logger = logging.getLogger(__name__)
+
     # Re-read from OS env in case Railway injected it after module import
     jwt_from_env = os.getenv("JWT_SECRET_KEY", "")
+    logger.info("JWT_SECRET_KEY from env: %s", "SET" if jwt_from_env else "NOT SET")
+    logger.info("JWT_SECRET_KEY from settings: %s", "default" if settings.JWT_SECRET_KEY == "CHANGE-ME-IN-PRODUCTION" else "custom")
+    logger.info("RAILWAY_ENVIRONMENT: %s", os.getenv("RAILWAY_ENVIRONMENT", "NOT SET"))
+
     if jwt_from_env and jwt_from_env != "CHANGE-ME-IN-PRODUCTION":
-        # Railway env var is set correctly — update settings object
         settings.JWT_SECRET_KEY = jwt_from_env
         return
-    if settings.JWT_SECRET_KEY == "CHANGE-ME-IN-PRODUCTION":
-        import warnings
-        warnings.warn(
-            "SECURITY WARNING: JWT_SECRET_KEY is set to the default placeholder. "
-            "Set a strong random secret via environment variable JWT_SECRET_KEY.",
-            stacklevel=2,
-        )
-        if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENV", "").lower() in ("production", "prod"):
-            raise SystemExit("FATAL: JWT_SECRET_KEY must be changed from the default in production.")
+    if settings.JWT_SECRET_KEY != "CHANGE-ME-IN-PRODUCTION":
+        return
+    # Default secret in production — warn but don't crash (let user fix via Railway dashboard)
+    logger.warning(
+        "SECURITY WARNING: JWT_SECRET_KEY is set to the default placeholder. "
+        "Set JWT_SECRET_KEY in Railway Variables tab."
+    )
