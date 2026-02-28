@@ -33,6 +33,12 @@ settings = Settings()
 def check_jwt_secret():
     """Call at app startup (not import time) to validate JWT secret."""
     import os
+    # Re-read from OS env in case Railway injected it after module import
+    jwt_from_env = os.getenv("JWT_SECRET_KEY", "")
+    if jwt_from_env and jwt_from_env != "CHANGE-ME-IN-PRODUCTION":
+        # Railway env var is set correctly — update settings object
+        settings.JWT_SECRET_KEY = jwt_from_env
+        return
     if settings.JWT_SECRET_KEY == "CHANGE-ME-IN-PRODUCTION":
         import warnings
         warnings.warn(
