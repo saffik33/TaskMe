@@ -1,23 +1,13 @@
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import os
 from html import escape
-
-import aiosmtplib
 
 from ..config import settings
 
 
-async def send_verification_email(to_email: str, username: str, verification_url: str):
-    import os
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "TaskMe: Verify Your Email Address"
-    msg["From"] = os.getenv("SMTP_FROM_EMAIL", settings.SMTP_FROM_EMAIL)
-    msg["To"] = to_email
-
+def _build_verification_html(username: str, verification_url: str) -> str:
     safe_username = escape(username)
     safe_url = escape(verification_url)
-
-    html_body = f"""
+    return f"""
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -47,9 +37,33 @@ async def send_verification_email(to_email: str, username: str, verification_url
     </body>
     </html>
     """
+
+
+async def _send_via_resend(to_email: str, subject: str, html_body: str):
+    """Send email via Resend HTTP API (works on Railway)."""
+    import resend
+    resend.api_key = os.getenv("RESEND_API_KEY", "")
+    from_email = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+    resend.Emails.send({
+        "from": from_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
+    })
+
+
+async def _send_via_smtp(to_email: str, subject: str, html_body: str):
+    """Send email via SMTP (works locally with Gmail)."""
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    import aiosmtplib
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = os.getenv("SMTP_FROM_EMAIL", settings.SMTP_FROM_EMAIL)
+    msg["To"] = to_email
     msg.attach(MIMEText(html_body, "html"))
 
-    import os
     smtp_port = int(os.getenv("SMTP_PORT", str(settings.SMTP_PORT)))
     use_ssl = smtp_port == 465
     await aiosmtplib.send(
@@ -63,6 +77,19 @@ async def send_verification_email(to_email: str, username: str, verification_url
     )
 
 
+async def _send_email(to_email: str, subject: str, html_body: str):
+    """Send email via Resend (if API key set) or SMTP (fallback for local dev)."""
+    if os.getenv("RESEND_API_KEY"):
+        await _send_via_resend(to_email, subject, html_body)
+    else:
+        await _send_via_smtp(to_email, subject, html_body)
+
+
+async def send_verification_email(to_email: str, username: str, verification_url: str):
+    html_body = _build_verification_html(username, verification_url)
+    await _send_email(to_email, "TaskMe: Verify Your Email Address", html_body)
+
+
 async def send_task_notification(
     to_email: str,
     owner_name: str,
@@ -70,11 +97,6 @@ async def send_task_notification(
     due_date: str,
     message: str,
 ):
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"TaskMe: You have a task - {escape(task_name)}"
-    msg["From"] = settings.SMTP_FROM_EMAIL
-    msg["To"] = to_email
-
     safe_owner = escape(owner_name)
     safe_task = escape(task_name)
     safe_due = escape(due_date or "No due date set")
@@ -106,13 +128,4 @@ async def send_task_notification(
     </body>
     </html>
     """
-    msg.attach(MIMEText(html_body, "html"))
-
-    await aiosmtplib.send(
-        msg,
-        hostname=settings.SMTP_HOST,
-        port=settings.SMTP_PORT,
-        username=settings.SMTP_USER,
-        password=settings.SMTP_PASSWORD,
-        start_tls=True,
-    )
+    await _send_email(to_email, f"TaskMe: You have a task - {escape(task_name)}", html_body)
