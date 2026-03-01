@@ -38,7 +38,8 @@ def _get_frontend_url() -> str:
 
 async def _send_verification(user: User):
     """Send verification email."""
-    verification_url = f"{_get_frontend_url()}/verify-email?token={user.verification_token}"
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    verification_url = f"{backend_url}/api/v1/auth/verify-email?token={user.verification_token}"
     try:
         await send_verification_email(user.email, user.username, verification_url)
     except Exception as e:
