@@ -8,9 +8,10 @@ from ..config import settings
 
 
 async def send_verification_email(to_email: str, username: str, verification_url: str):
+    import os
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "TaskMe: Verify Your Email Address"
-    msg["From"] = settings.SMTP_FROM_EMAIL
+    msg["From"] = os.getenv("SMTP_FROM_EMAIL", settings.SMTP_FROM_EMAIL)
     msg["To"] = to_email
 
     safe_username = escape(username)
@@ -48,12 +49,13 @@ async def send_verification_email(to_email: str, username: str, verification_url
     """
     msg.attach(MIMEText(html_body, "html"))
 
+    import os
     await aiosmtplib.send(
         msg,
-        hostname=settings.SMTP_HOST,
-        port=settings.SMTP_PORT,
-        username=settings.SMTP_USER,
-        password=settings.SMTP_PASSWORD,
+        hostname=os.getenv("SMTP_HOST", settings.SMTP_HOST),
+        port=int(os.getenv("SMTP_PORT", str(settings.SMTP_PORT))),
+        username=os.getenv("SMTP_USER", settings.SMTP_USER),
+        password=os.getenv("SMTP_PASSWORD", settings.SMTP_PASSWORD),
         start_tls=True,
     )
 
