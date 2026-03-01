@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { login as apiLogin, register as apiRegister, getMe } from '../api/auth'
+import { login as apiLogin, register as apiRegister, getMe, resendVerification as apiResend } from '../api/auth'
 
 const AuthContext = createContext(null)
 
@@ -29,10 +29,15 @@ export function AuthProvider({ children }) {
   }, [])
 
   const register = useCallback(async (username, email, password) => {
-    await apiRegister(username, email, password)
-    // Auto-login after registration
-    return login(username, password)
-  }, [login])
+    const res = await apiRegister(username, email, password)
+    // Don't auto-login — user needs to verify email first
+    return res.data
+  }, [])
+
+  const resendVerification = useCallback(async (email) => {
+    const res = await apiResend(email)
+    return res.data
+  }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem('token')
@@ -40,7 +45,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, resendVerification, logout }}>
       {children}
     </AuthContext.Provider>
   )

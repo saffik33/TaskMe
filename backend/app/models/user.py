@@ -17,6 +17,9 @@ class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     hashed_password: str = Field(max_length=255)
     created_at: datetime = Field(default_factory=_utcnow)
+    email_verified: bool = Field(default=False)
+    verification_token: Optional[str] = Field(default=None, max_length=64)
+    verification_token_expires: Optional[datetime] = None
 
 
 class UserCreate(SQLModel):
@@ -33,3 +36,4 @@ class UserLogin(SQLModel):
 class UserPublic(UserBase):
     id: int
     created_at: datetime
+    email_verified: bool = False

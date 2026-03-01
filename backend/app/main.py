@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from .config import settings, check_jwt_secret
-from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, seed_core_columns
+from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, migrate_add_email_verification, seed_core_columns
 from .routers import auth, columns, export, parse, share, tasks
 
 limiter = Limiter(key_func=get_remote_address)
@@ -22,7 +22,11 @@ async def lifespan(app: FastAPI):
     migrate_custom_fields_column()
     migrate_add_user_support()
     migrate_assign_orphan_data()
+    migrate_add_email_verification()
     seed_core_columns()
+    if not settings.SMTP_USER:
+        import logging
+        logging.getLogger(__name__).warning("SMTP_USER not set — email verification will fail")
     yield
 
 

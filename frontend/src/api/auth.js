@@ -11,3 +11,7 @@ export function register(username, email, password) {
 export function getMe() {
   return client.get('/auth/me')
 }
+
+export function resendVerification(email) {
+  return client.post('/auth/resend-verification', { email })
+}

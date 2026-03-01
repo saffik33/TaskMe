@@ -122,6 +122,26 @@ def migrate_assign_orphan_data():
         session.commit()
 
 
+def migrate_add_email_verification():
+    """Add email verification columns to user table if missing."""
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    if "user" not in existing_tables:
+        return
+
+    columns = [col["name"] for col in inspector.get_columns("user")]
+    with Session(engine) as session:
+        if "email_verified" not in columns:
+            session.exec(text('ALTER TABLE "user" ADD COLUMN email_verified BOOLEAN DEFAULT TRUE'))
+        if "verification_token" not in columns:
+            session.exec(text('ALTER TABLE "user" ADD COLUMN verification_token VARCHAR(64)'))
+        if "verification_token_expires" not in columns:
+            session.exec(text('ALTER TABLE "user" ADD COLUMN verification_token_expires TIMESTAMP'))
+        # Set all existing users as verified
+        session.exec(text('UPDATE "user" SET email_verified = TRUE WHERE email_verified IS NULL'))
+        session.commit()
+
+
 CORE_COLUMNS = [
     {"field_key": "task_name", "display_name": "Task Name", "field_type": "text", "position": 0, "is_core": True, "is_required": True},
     {"field_key": "description", "display_name": "Description", "field_type": "text", "position": 1, "is_core": True, "is_required": False},

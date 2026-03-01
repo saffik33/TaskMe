@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "CHANGE-ME-IN-PRODUCTION"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
+    EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
 
     model_config = {"env_file": str(ENV_FILE)}
 
