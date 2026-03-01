@@ -36,20 +36,17 @@ def _get_frontend_url() -> str:
     return os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
 
 
-def _send_verification(user: User):
-    """Send verification email (fire-and-forget async)."""
+async def _send_verification(user: User):
+    """Send verification email."""
     verification_url = f"{_get_frontend_url()}/verify-email?token={user.verification_token}"
     try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            send_verification_email(user.email, user.username, verification_url)
-        )
+        await send_verification_email(user.email, user.username, verification_url)
     except Exception as e:
         logger.error("Failed to send verification email to %s: %s", user.email, str(e))
 
 
 @router.post("/register", status_code=201)
-def register(user_in: UserCreate, session: SessionDep):
+async def register(user_in: UserCreate, session: SessionDep):
     try:
         password_error = _validate_password_complexity(user_in.password)
         if password_error:
@@ -78,7 +75,7 @@ def register(user_in: UserCreate, session: SessionDep):
 
         seed_core_columns_for_user(session, user.id)
 
-        _send_verification(user)
+        await _send_verification(user)
 
         return {"message": "Registration successful. Please check your email to verify your account.", "email": user.email}
     except HTTPException:
@@ -111,7 +108,7 @@ class ResendRequest(BaseModel):
 
 
 @router.post("/resend-verification")
-def resend_verification(req: ResendRequest, session: SessionDep):
+async def resend_verification(req: ResendRequest, session: SessionDep):
     user = session.exec(select(User).where(User.email == req.email)).first()
     if not user:
         return {"message": "If that email exists, a verification link has been sent."}
@@ -124,7 +121,7 @@ def resend_verification(req: ResendRequest, session: SessionDep):
     session.add(user)
     session.commit()
 
-    _send_verification(user)
+    await _send_verification(user)
 
     return {"message": "If that email exists, a verification link has been sent."}
 
