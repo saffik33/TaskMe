@@ -86,13 +86,15 @@ async def register(user_in: UserCreate, session: SessionDep):
 
 
 @router.get("/verify-email")
-def verify_email(token: str = Query(...), session: SessionDep = None):
+def verify_email(token: str, session: SessionDep):
     user = session.exec(select(User).where(User.verification_token == token)).first()
     if not user:
         return RedirectResponse(url=f"{_get_frontend_url()}/login?verified=invalid")
 
-    if user.verification_token_expires and user.verification_token_expires < datetime.now(timezone.utc):
-        return RedirectResponse(url=f"{_get_frontend_url()}/login?verified=expired")
+    if user.verification_token_expires:
+        expires = user.verification_token_expires if user.verification_token_expires.tzinfo else user.verification_token_expires.replace(tzinfo=timezone.utc)
+        if expires < datetime.now(timezone.utc):
+            return RedirectResponse(url=f"{_get_frontend_url()}/login?verified=expired")
 
     user.email_verified = True
     user.verification_token = None
