@@ -50,13 +50,16 @@ async def send_verification_email(to_email: str, username: str, verification_url
     msg.attach(MIMEText(html_body, "html"))
 
     import os
+    smtp_port = int(os.getenv("SMTP_PORT", str(settings.SMTP_PORT)))
+    use_ssl = smtp_port == 465
     await aiosmtplib.send(
         msg,
         hostname=os.getenv("SMTP_HOST", settings.SMTP_HOST),
-        port=int(os.getenv("SMTP_PORT", str(settings.SMTP_PORT))),
+        port=smtp_port,
         username=os.getenv("SMTP_USER", settings.SMTP_USER),
         password=os.getenv("SMTP_PASSWORD", settings.SMTP_PASSWORD),
-        start_tls=True,
+        start_tls=not use_ssl,
+        use_tls=use_ssl,
     )
 
 
