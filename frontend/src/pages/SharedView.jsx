@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Loader2, ListTodo } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { getSharedTasks } from '../api/tasks'
 import StatusBadge from '../components/StatusBadge'
 import PriorityBadge from '../components/PriorityBadge'
@@ -48,13 +48,8 @@ export default function SharedView() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <ListTodo className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">TaskMe</h1>
-            <p className="text-xs text-gray-500">Shared Task List</p>
-          </div>
+          <img src="/taskme-header.png" alt="TaskMe" className="h-12" />
+          <p className="text-xs text-gray-500">Shared Task List</p>
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-8">
