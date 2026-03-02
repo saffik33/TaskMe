@@ -30,6 +30,9 @@ export const createShareLink = (taskIds) =>
 
 export const getSharedTasks = (token) => client.get(`/share/${token}`)
 
+export const sendShareEmail = (shareUrl, recipientEmail, taskIds) =>
+  client.post('/share/send-email', { share_url: shareUrl, recipient_email: recipientEmail, task_ids: taskIds })
+
 // Column management
 export const fetchColumns = () => client.get('/columns')
 export const createColumn = (data) => client.post('/columns', data)

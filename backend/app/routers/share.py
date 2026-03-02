@@ -52,6 +52,41 @@ def create_share_link(request: ShareRequest, session: SessionDep, current_user: 
     return {"token": token, "url": url}
 
 
+class ShareEmailRequest(BaseModel):
+    share_url: str
+    recipient_email: str
+    task_ids: list[int]
+
+
+@router.post("/send-email")
+async def send_share_email(req: ShareEmailRequest, session: SessionDep, current_user: CurrentUserDep):
+    from ..services.email_service import send_share_link_email
+
+    owned_tasks = session.exec(
+        select(Task).where(Task.id.in_(req.task_ids), Task.user_id == current_user.id)
+    ).all()
+    if not owned_tasks:
+        raise HTTPException(status_code=403, detail="No valid tasks found")
+
+    tasks_data = [
+        {
+            "task_name": t.task_name,
+            "owner": t.owner,
+            "due_date": str(t.due_date) if t.due_date else None,
+            "status": t.status,
+            "priority": t.priority,
+        }
+        for t in owned_tasks
+    ]
+
+    try:
+        await send_share_link_email(req.recipient_email, current_user.username, req.share_url, tasks_data)
+        return {"message": "Email sent successfully"}
+    except Exception as e:
+        logger.exception("Failed to send share email: %s", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+
 @router.get("/{token}", response_model=list[TaskPublic])
 def get_shared_tasks(token: str, session: SessionDep):
     try:

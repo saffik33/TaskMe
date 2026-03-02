@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react'
-import { X, Copy, Check, Link } from 'lucide-react'
-import { createShareLink } from '../api/tasks'
+import { X, Copy, Check, Link, Mail, Send } from 'lucide-react'
+import { createShareLink, sendShareEmail } from '../api/tasks'
 import toast from 'react-hot-toast'
 
 export default function ShareDialog({ open, taskIds, onClose }) {
   const [shareUrl, setShareUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
 
   useEffect(() => {
     if (open) {
       setShareUrl('')
       setCopied(false)
+      setEmail('')
+      setSending(false)
+      setSent(false)
     }
   }, [open, taskIds])
 
@@ -34,6 +40,22 @@ export default function ShareDialog({ open, taskIds, onClose }) {
     setCopied(true)
     toast.success('Link copied!')
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSendEmail = async () => {
+    if (!email.trim()) return
+    setSending(true)
+    try {
+      await sendShareEmail(shareUrl, email, taskIds)
+      toast.success('Email sent!')
+      setSent(true)
+      setTimeout(() => setSent(false), 3000)
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      toast.error(detail || 'Failed to send email')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -63,18 +85,47 @@ export default function ShareDialog({ open, taskIds, onClose }) {
             {loading ? 'Creating...' : 'Create Share Link'}
           </button>
         ) : (
-          <div className="flex items-center gap-2">
-            <input
-              value={shareUrl}
-              readOnly
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
-            />
-            <button
-              onClick={handleCopy}
-              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            </button>
+          <div className="space-y-4">
+            {/* Copy link */}
+            <div className="flex items-center gap-2">
+              <input
+                value={shareUrl}
+                readOnly
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
+              />
+              <button
+                onClick={handleCopy}
+                className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Send via email */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Send via Email</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="recipient@example.com"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendEmail()}
+                />
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sending || !email.trim()}
+                  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {sent ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  <span className="text-sm">{sending ? 'Sending...' : sent ? 'Sent!' : 'Send'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

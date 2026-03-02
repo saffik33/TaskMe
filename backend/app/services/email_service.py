@@ -90,6 +90,61 @@ async def send_verification_email(to_email: str, username: str, verification_url
     await _send_email(to_email, "TaskMe: Verify Your Email Address", html_body)
 
 
+async def send_share_link_email(to_email: str, from_username: str, share_url: str, tasks: list):
+    safe_user = escape(from_username)
+    safe_url = escape(share_url)
+
+    task_rows = ""
+    for t in tasks:
+        task_rows += f"""
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">{escape(t.get('task_name', ''))}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">{escape(t.get('owner', '') or '—')}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">{escape(t.get('due_date', '') or '—')}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">{escape(t.get('status', ''))}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">{escape(t.get('priority', ''))}</td>
+            </tr>"""
+
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0;">TaskMe</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb;
+                    border-radius: 0 0 8px 8px;">
+            <p><strong>{safe_user}</strong> shared {len(tasks)} task(s) with you:</p>
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; margin: 16px 0;">
+                <thead>
+                    <tr style="background: #f3f4f6;">
+                        <th style="padding: 8px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280;">Task</th>
+                        <th style="padding: 8px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280;">Owner</th>
+                        <th style="padding: 8px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280;">Due Date</th>
+                        <th style="padding: 8px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280;">Status</th>
+                        <th style="padding: 8px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280;">Priority</th>
+                    </tr>
+                </thead>
+                <tbody>{task_rows}</tbody>
+            </table>
+            <div style="text-align: center; margin: 24px 0;">
+                <a href="{safe_url}"
+                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                          color: white; padding: 12px 32px; border-radius: 8px;
+                          text-decoration: none; font-weight: bold; display: inline-block;">
+                    View Tasks
+                </a>
+            </div>
+            <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+                Sent via TaskMe - AI-Powered Task Management
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    await _send_email(to_email, f"TaskMe: {safe_user} shared tasks with you", html_body)
+
+
 async def send_task_notification(
     to_email: str,
     owner_name: str,
