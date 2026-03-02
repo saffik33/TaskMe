@@ -44,7 +44,7 @@ app = FastAPI(
 frontend_url = os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
 allowed_origins = [
     frontend_url,
-    "https://frontend-production-c90f0.up.railway.app",
+    "https://app.taskme-app.com",
     "http://localhost:5173",
 ]
 app.add_middleware(
