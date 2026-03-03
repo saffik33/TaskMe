@@ -234,9 +234,15 @@ def seed_core_columns_for_user(session: Session, user_id: int):
     session.commit()
 
 
-def seed_core_columns_for_workspace(session: Session, workspace_id: int):
+def seed_core_columns_for_workspace(session: Session, workspace_id: int, user_id: int = None):
     """Insert core column configs for a specific workspace."""
     from .models.column_config import ColumnConfig
+    from .models.workspace import Workspace
+
+    # Get owner_id from workspace if user_id not provided
+    if not user_id:
+        ws = session.get(Workspace, workspace_id)
+        user_id = ws.owner_id if ws else None
 
     existing = session.exec(
         select(ColumnConfig).where(ColumnConfig.workspace_id == workspace_id)
@@ -245,7 +251,7 @@ def seed_core_columns_for_workspace(session: Session, workspace_id: int):
 
     for col_data in CORE_COLUMNS:
         if col_data["field_key"] not in existing_keys:
-            col = ColumnConfig(**col_data, workspace_id=workspace_id, is_visible=True)
+            col = ColumnConfig(**col_data, workspace_id=workspace_id, user_id=user_id, is_visible=True)
             session.add(col)
 
     session.commit()

@@ -3,6 +3,7 @@ import re
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import or_
 from sqlmodel import select
 
 from ..database import SessionDep
@@ -13,6 +14,7 @@ from ..models.column_config import (
     ColumnConfigPublic,
     ColumnConfigUpdate,
 )
+from ..models.workspace import WorkspaceMember
 
 router = APIRouter(prefix="/columns", tags=["columns"])
 
@@ -23,6 +25,21 @@ VALID_FIELD_TYPES = {"text", "number", "date", "select"}
 def generate_field_key(display_name: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", display_name.lower()).strip("_")
     return f"cf_{slug}"
+
+
+def _user_workspace_ids(session, user_id: int) -> list[int]:
+    """Get all workspace IDs the user is a member of."""
+    members = session.exec(select(WorkspaceMember).where(WorkspaceMember.user_id == user_id)).all()
+    return [m.workspace_id for m in members]
+
+
+def _user_owns_column(col, user_id: int, ws_ids: list[int]) -> bool:
+    """Check if a column belongs to the user (via user_id or workspace_id)."""
+    if col.user_id == user_id:
+        return True
+    if col.workspace_id and col.workspace_id in ws_ids:
+        return True
+    return False
 
 
 @router.get("", response_model=list[ColumnConfigPublic])
@@ -51,19 +68,29 @@ def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user:
 
     field_key = generate_field_key(col_in.display_name)
 
-    # Ensure unique key per user
-    existing = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == field_key, ColumnConfig.user_id == current_user.id)).first()
+    # Ensure unique key — check by workspace if provided, otherwise by user
+    if workspace_id:
+        existing = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == field_key, ColumnConfig.workspace_id == workspace_id)).first()
+    else:
+        existing = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == field_key, ColumnConfig.user_id == current_user.id)).first()
     if existing:
         i = 2
         while True:
             candidate = f"{field_key}_{i}"
-            if not session.exec(select(ColumnConfig).where(ColumnConfig.field_key == candidate, ColumnConfig.user_id == current_user.id)).first():
+            if workspace_id:
+                dup = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == candidate, ColumnConfig.workspace_id == workspace_id)).first()
+            else:
+                dup = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == candidate, ColumnConfig.user_id == current_user.id)).first()
+            if not dup:
                 field_key = candidate
                 break
             i += 1
 
-    # Get max position for this user
-    all_cols = session.exec(select(ColumnConfig).where(ColumnConfig.user_id == current_user.id)).all()
+    # Get max position — by workspace if provided, otherwise by user
+    if workspace_id:
+        all_cols = session.exec(select(ColumnConfig).where(ColumnConfig.workspace_id == workspace_id)).all()
+    else:
+        all_cols = session.exec(select(ColumnConfig).where(ColumnConfig.user_id == current_user.id)).all()
     max_pos = max((c.position for c in all_cols), default=-1)
 
     col = ColumnConfig(
@@ -85,20 +112,25 @@ def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user:
 
 
 @router.patch("/reorder", response_model=list[ColumnConfigPublic])
-def reorder_columns(items: list[dict], session: SessionDep, current_user: CurrentUserDep):
+def reorder_columns(items: list[dict], session: SessionDep, current_user: CurrentUserDep, workspace_id: Optional[int] = None):
+    ws_ids = _user_workspace_ids(session, current_user.id)
     for item in items:
-        col = session.exec(select(ColumnConfig).where(ColumnConfig.id == item["id"], ColumnConfig.user_id == current_user.id)).first()
-        if col:
+        col = session.get(ColumnConfig, item["id"])
+        if col and _user_owns_column(col, current_user.id, ws_ids):
             col.position = item["position"]
             session.add(col)
     session.commit()
+
+    if workspace_id:
+        return session.exec(select(ColumnConfig).where(ColumnConfig.workspace_id == workspace_id).order_by(ColumnConfig.position)).all()
     return session.exec(select(ColumnConfig).where(ColumnConfig.user_id == current_user.id).order_by(ColumnConfig.position)).all()
 
 
 @router.patch("/{col_id}", response_model=ColumnConfigPublic)
 def update_column(col_id: int, col_in: ColumnConfigUpdate, session: SessionDep, current_user: CurrentUserDep):
-    col = session.exec(select(ColumnConfig).where(ColumnConfig.id == col_id, ColumnConfig.user_id == current_user.id)).first()
-    if not col:
+    ws_ids = _user_workspace_ids(session, current_user.id)
+    col = session.get(ColumnConfig, col_id)
+    if not col or not _user_owns_column(col, current_user.id, ws_ids):
         raise HTTPException(status_code=404, detail="Column not found")
 
     # Protected visibility for task_name, status, priority
@@ -125,8 +157,9 @@ def update_column(col_id: int, col_in: ColumnConfigUpdate, session: SessionDep, 
 
 @router.delete("/{col_id}")
 def delete_column(col_id: int, session: SessionDep, current_user: CurrentUserDep):
-    col = session.exec(select(ColumnConfig).where(ColumnConfig.id == col_id, ColumnConfig.user_id == current_user.id)).first()
-    if not col:
+    ws_ids = _user_workspace_ids(session, current_user.id)
+    col = session.get(ColumnConfig, col_id)
+    if not col or not _user_owns_column(col, current_user.id, ws_ids):
         raise HTTPException(status_code=404, detail="Column not found")
     if col.is_core:
         raise HTTPException(status_code=400, detail="Cannot delete core column")
