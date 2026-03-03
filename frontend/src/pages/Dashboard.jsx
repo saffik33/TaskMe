@@ -3,6 +3,7 @@ import { Plus, Download, Share2, Loader2, Trash2, Settings, X } from 'lucide-rea
 import toast from 'react-hot-toast'
 import { useTasks } from '../context/TaskContext'
 import { useColumns } from '../context/ColumnContext'
+import { useWorkspaces } from '../context/WorkspaceContext'
 import NaturalLanguageInput from '../components/NaturalLanguageInput'
 import TaskFilters from '../components/TaskFilters'
 import TaskTable from '../components/TaskTable'
@@ -16,6 +17,7 @@ import { exportExcel, sendNotification } from '../api/tasks'
 export default function Dashboard() {
   const { tasks, loading, addTask, editTask, removeTask, removeBulkTasks } = useTasks()
   const { columns } = useColumns()
+  const { activeWorkspace } = useWorkspaces()
 
   const [view, setView] = useState('table')
   const [modalOpen, setModalOpen] = useState(false)
@@ -116,7 +118,9 @@ export default function Dashboard() {
   const handleExport = async () => {
     setExporting(true)
     try {
-      const res = await exportExcel(selectedCount > 0 ? { ids: selectedIds.join(',') } : {})
+      const params = activeWorkspace ? { workspace_id: activeWorkspace.id } : {}
+      if (selectedCount > 0) params.ids = selectedIds.join(',')
+      const res = await exportExcel(params)
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const link = document.createElement('a')
       link.href = url

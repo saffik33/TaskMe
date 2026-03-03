@@ -1,5 +1,6 @@
 import { LogOut, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
@@ -8,16 +9,17 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src="/taskme-header.png" alt="TaskMe" className="h-16" />
+              <img src="/taskme-header.png" alt="TaskMe" className="h-12" />
+              <WorkspaceSwitcher />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {user && (
                 <>
                   <div className="flex items-center gap-1.5 text-sm text-gray-600">
                     <User className="w-4 h-4" />
-                    <span className="font-medium">{user.username}</span>
+                    <span className="hidden sm:inline font-medium">{user.username}</span>
                   </div>
                   <button
                     onClick={logout}
