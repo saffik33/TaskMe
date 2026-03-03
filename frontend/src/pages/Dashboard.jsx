@@ -155,14 +155,6 @@ export default function Dashboard() {
             <Settings className="w-4 h-4" /> Columns
           </button>
           <button
-            onClick={() => setDeleteSelectedConfirm(true)}
-            disabled={selectedCount === 0}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors text-gray-400 bg-white border-gray-200 opacity-50 cursor-not-allowed${selectedCount > 0 ? ' invisible' : ''}`}
-            title="Delete selected tasks"
-          >
-            <Trash2 className="w-4 h-4" /> Delete
-          </button>
-          <button
             onClick={handleExport}
             disabled={exporting || tasks.length === 0}
             className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-purple-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50${selectedCount > 0 ? ' invisible' : ''}`}
