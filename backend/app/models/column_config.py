@@ -14,6 +14,7 @@ class ColumnConfig(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("user.id"), nullable=True, index=True))
+    workspace_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("workspace.id"), nullable=True, index=True))
     field_key: str = Field(index=True, max_length=100)
     display_name: str = Field(max_length=150)
     field_type: str = Field(max_length=20)  # text, number, date, select

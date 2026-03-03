@@ -12,6 +12,7 @@ def _utcnow() -> datetime:
 class SharedList(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("user.id"), nullable=True, index=True))
+    workspace_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("workspace.id"), nullable=True, index=True))
     share_token: str = Field(index=True, unique=True, max_length=64)
     task_ids: str  # JSON-encoded list of task IDs
     created_at: datetime = Field(default_factory=_utcnow)

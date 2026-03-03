@@ -40,7 +40,7 @@ def check_database_url():
 
 def create_db_and_tables():
     # Import models so metadata is populated
-    from .models import Task, SharedList, ColumnConfig, User  # noqa: F401
+    from .models import Task, SharedList, ColumnConfig, User, Workspace, WorkspaceMember  # noqa: F401
     SQLModel.metadata.create_all(engine)
 
 
@@ -140,6 +140,67 @@ def migrate_add_email_verification():
         # Set all existing users as verified
         session.exec(text('UPDATE "user" SET email_verified = TRUE WHERE email_verified IS NULL'))
         session.commit()
+
+
+def migrate_add_workspaces():
+    """Add workspace tables and workspace_id columns to existing tables."""
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+
+    with Session(engine) as session:
+        # Add workspace_id to task, columnconfig, sharedlist if missing
+        for table_name in ["task", "columnconfig", "sharedlist"]:
+            if table_name in existing_tables:
+                columns = [col["name"] for col in inspector.get_columns(table_name)]
+                if "workspace_id" not in columns:
+                    session.exec(text(
+                        f'ALTER TABLE {table_name} ADD COLUMN workspace_id INTEGER REFERENCES workspace(id)'
+                    ))
+        session.commit()
+
+
+def migrate_backfill_workspaces():
+    """Create default workspace for each user and assign orphan data."""
+    from .models.user import User
+    from .models.workspace import Workspace, WorkspaceMember
+
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    if "workspace" not in existing_tables:
+        return
+
+    with Session(engine) as session:
+        users = session.exec(select(User)).all()
+        for user in users:
+            # Check if user already has a workspace
+            existing = session.exec(
+                select(Workspace).where(Workspace.owner_id == user.id)
+            ).first()
+            if existing:
+                continue
+
+            # Create default workspace
+            ws = Workspace(name="My Tasks", owner_id=user.id)
+            session.add(ws)
+            session.commit()
+            session.refresh(ws)
+
+            # Add user as owner member
+            member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
+            session.add(member)
+
+            # Backfill tasks, columns, shares
+            session.exec(text(
+                "UPDATE task SET workspace_id = :wid WHERE user_id = :uid AND workspace_id IS NULL"
+            ).bindparams(wid=ws.id, uid=user.id))
+            session.exec(text(
+                "UPDATE columnconfig SET workspace_id = :wid WHERE user_id = :uid AND workspace_id IS NULL"
+            ).bindparams(wid=ws.id, uid=user.id))
+            session.exec(text(
+                "UPDATE sharedlist SET workspace_id = :wid WHERE user_id = :uid AND workspace_id IS NULL"
+            ).bindparams(wid=ws.id, uid=user.id))
+
+            session.commit()
 
 
 CORE_COLUMNS = [

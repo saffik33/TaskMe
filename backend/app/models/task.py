@@ -39,6 +39,7 @@ class TaskBase(SQLModel):
 class Task(TaskBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("user.id"), nullable=True, index=True))
+    workspace_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("workspace.id"), nullable=True, index=True))
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
