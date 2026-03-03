@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 from sqlmodel import col, select
 
 from ..database import SessionDep
@@ -60,6 +61,64 @@ def list_tasks(
     statement = statement.offset(offset).limit(limit)
     tasks = session.exec(statement).all()
     return tasks
+
+
+class CopyMoveRequest(BaseModel):
+    task_ids: list[int]
+    destination_workspace_id: int
+    action: str  # "copy" or "move"
+
+
+@router.post("/copy-move")
+def copy_move_tasks(req: CopyMoveRequest, session: SessionDep, current_user: CurrentUserDep):
+    from ..models.workspace import WorkspaceMember
+
+    if req.action not in ("copy", "move"):
+        raise HTTPException(status_code=400, detail="Action must be 'copy' or 'move'")
+
+    # Verify user has access to destination workspace
+    member = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == req.destination_workspace_id,
+            WorkspaceMember.user_id == current_user.id,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="No access to destination workspace")
+
+    # Fetch tasks that belong to current user
+    tasks = session.exec(
+        select(Task).where(Task.id.in_(req.task_ids), Task.user_id == current_user.id)
+    ).all()
+    if not tasks:
+        raise HTTPException(status_code=404, detail="No tasks found")
+
+    count = len(tasks)
+
+    if req.action == "copy":
+        for t in tasks:
+            new_task = Task(
+                task_name=t.task_name,
+                description=t.description,
+                owner=t.owner,
+                email=t.email,
+                start_date=t.start_date,
+                due_date=t.due_date,
+                status=t.status,
+                priority=t.priority,
+                custom_fields=t.custom_fields,
+                user_id=current_user.id,
+                workspace_id=req.destination_workspace_id,
+            )
+            session.add(new_task)
+        session.commit()
+    else:  # move
+        for t in tasks:
+            t.workspace_id = req.destination_workspace_id
+            session.add(t)
+        session.commit()
+
+    return {"ok": True, "count": count, "action": req.action}
 
 
 @router.get("/{task_id}", response_model=TaskPublic)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Download, Share2, Loader2, Trash2, Settings, X } from 'lucide-react'
+import { Plus, Download, Share2, Loader2, Trash2, Settings, X, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTasks } from '../context/TaskContext'
 import { useColumns } from '../context/ColumnContext'
@@ -11,11 +11,12 @@ import TaskBoard from '../components/TaskBoard'
 import TaskModal from '../components/TaskModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ShareDialog from '../components/ShareDialog'
+import CopyMoveDialog from '../components/CopyMoveDialog'
 import ColumnManager from '../components/ColumnManager'
 import { exportExcel, sendNotification } from '../api/tasks'
 
 export default function Dashboard() {
-  const { tasks, loading, addTask, editTask, removeTask, removeBulkTasks } = useTasks()
+  const { tasks, loading, loadTasks, addTask, editTask, removeTask, removeBulkTasks } = useTasks()
   const { columns } = useColumns()
   const { activeWorkspace } = useWorkspaces()
 
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [editingTask, setEditingTask] = useState(null)
   const [deleteTask, setDeleteTask] = useState(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [copyMoveOpen, setCopyMoveOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [rowSelection, setRowSelection] = useState({})
   const [deleteSelectedConfirm, setDeleteSelectedConfirm] = useState(false)
@@ -212,6 +214,12 @@ export default function Dashboard() {
               <Share2 className="w-4 h-4" /> Share ({selectedCount})
             </button>
             <button
+              onClick={() => setCopyMoveOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Copy className="w-4 h-4" /> Copy/Move ({selectedCount})
+            </button>
+            <button
               onClick={() => setRowSelection({})}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
               title="Clear selection"
@@ -278,6 +286,16 @@ export default function Dashboard() {
         open={shareOpen}
         taskIds={selectedCount > 0 ? selectedIds : tasks.map((t) => t.id)}
         onClose={() => setShareOpen(false)}
+      />
+
+      <CopyMoveDialog
+        open={copyMoveOpen}
+        taskIds={selectedIds}
+        onClose={() => setCopyMoveOpen(false)}
+        onComplete={(action) => {
+          if (action === 'move') loadTasks()
+          setRowSelection({})
+        }}
       />
 
       <ColumnManager

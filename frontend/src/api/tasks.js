@@ -14,6 +14,9 @@ export const deleteTask = (id) => client.delete(`/tasks/${id}`)
 
 export const deleteAllTasks = () => client.delete('/tasks/all')
 
+export const copyMoveTasks = (taskIds, destinationWorkspaceId, action) =>
+  client.post('/tasks/copy-move', { task_ids: taskIds, destination_workspace_id: destinationWorkspaceId, action })
+
 export const deleteBulkTasks = (ids) => client.delete('/tasks/bulk/delete', { data: ids })
 
 export const parseText = (text, provider, tone, workspaceId) =>
