@@ -45,6 +45,7 @@ frontend_url = os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
 allowed_origins = [
     frontend_url,
     "https://app.taskme-app.com",
+    "https://frontend-production-c90f0.up.railway.app",
     "http://localhost:5173",
 ]
 app.add_middleware(
