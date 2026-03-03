@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as api from '../api/tasks'
+import { useWorkspaces } from './WorkspaceContext'
 
 const TaskContext = createContext()
 
@@ -9,6 +10,7 @@ const normalizeTask = (task) => ({
 })
 
 export function TaskProvider({ children }) {
+  const { activeWorkspace } = useWorkspaces()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
@@ -21,9 +23,10 @@ export function TaskProvider({ children }) {
   })
 
   const loadTasks = useCallback(async () => {
+    if (!activeWorkspace) return
     setLoading(true)
     try {
-      const params = {}
+      const params = { workspace_id: activeWorkspace.id }
       if (filters.search) params.search = filters.search
       if (filters.status) params.status = filters.status
       if (filters.priority) params.priority = filters.priority
@@ -38,21 +41,23 @@ export function TaskProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [filters, activeWorkspace])
 
   useEffect(() => {
     loadTasks()
   }, [loadTasks])
 
   const addTask = async (data) => {
-    const res = await api.createTask(data)
+    const params = activeWorkspace ? { workspace_id: activeWorkspace.id } : {}
+    const res = await api.createTask(data, params)
     const newTask = normalizeTask(res.data)
     setTasks((prev) => [newTask, ...prev])
     return res.data
   }
 
   const addBulkTasks = async (tasksData) => {
-    const res = await api.createBulkTasks(tasksData)
+    const params = activeWorkspace ? { workspace_id: activeWorkspace.id } : {}
+    const res = await api.createBulkTasks(tasksData, params)
     const newTasks = res.data.map(normalizeTask)
     setTasks((prev) => [...newTasks, ...prev])
     return res.data
@@ -61,7 +66,6 @@ export function TaskProvider({ children }) {
   const editTask = async (id, data) => {
     const previousTasks = tasks
 
-    // Optimistic: update the single task immediately
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== id) return t
@@ -123,7 +127,7 @@ export function TaskProvider({ children }) {
   }
 
   const parseTasks = async (text, provider, tone) => {
-    const res = await api.parseText(text, provider, tone)
+    const res = await api.parseText(text, provider, tone, activeWorkspace?.id)
     return res.data.tasks
   }
 

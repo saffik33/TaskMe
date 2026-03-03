@@ -1,22 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import * as api from '../api/tasks'
+import { useWorkspaces } from './WorkspaceContext'
 
 const ColumnContext = createContext()
 
 export function ColumnProvider({ children }) {
+  const { activeWorkspace } = useWorkspaces()
   const [columns, setColumns] = useState([])
   const [loading, setLoading] = useState(true)
 
   const loadColumns = useCallback(async () => {
+    if (!activeWorkspace) return
     try {
-      const res = await api.fetchColumns()
+      const res = await api.fetchColumns({ workspace_id: activeWorkspace.id })
       setColumns(res.data)
     } catch (err) {
       console.error('Failed to load columns:', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeWorkspace])
 
   useEffect(() => {
     loadColumns()
@@ -33,7 +36,8 @@ export function ColumnProvider({ children }) {
   )
 
   const addColumn = async (data) => {
-    const res = await api.createColumn(data)
+    const params = activeWorkspace ? { workspace_id: activeWorkspace.id } : {}
+    const res = await api.createColumn(data, params)
     await loadColumns()
     return res.data
   }

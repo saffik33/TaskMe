@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
+import { WorkspaceProvider } from './context/WorkspaceContext'
 import { ColumnProvider } from './context/ColumnContext'
 import { TaskProvider } from './context/TaskContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -26,13 +27,15 @@ export default function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <ColumnProvider>
-                  <TaskProvider>
-                    <Layout>
-                      <Dashboard />
-                    </Layout>
-                  </TaskProvider>
-                </ColumnProvider>
+                <WorkspaceProvider>
+                  <ColumnProvider>
+                    <TaskProvider>
+                      <Layout>
+                        <Dashboard />
+                      </Layout>
+                    </TaskProvider>
+                  </ColumnProvider>
+                </WorkspaceProvider>
               </ProtectedRoute>
             }
           />
