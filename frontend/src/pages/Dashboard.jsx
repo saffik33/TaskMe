@@ -145,8 +145,8 @@ export default function Dashboard() {
 
       {/* Actions bar */}
       <div className="flex items-center justify-between gap-3">
-        <TaskFilters view={view} onViewChange={setView} />
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <TaskFilters view={view} onViewChange={setView} />
           <button
             onClick={() => setColumnManagerOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-purple-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
@@ -154,6 +154,8 @@ export default function Dashboard() {
           >
             <Settings className="w-4 h-4" /> Columns
           </button>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={handleExport}
             disabled={exporting || tasks.length === 0}
