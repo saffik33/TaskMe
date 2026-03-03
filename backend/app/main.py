@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 
 from .config import settings, check_jwt_secret
 from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, migrate_add_email_verification, migrate_add_workspaces, migrate_backfill_workspaces, seed_core_columns
-from .routers import auth, columns, export, parse, share, tasks
+from .routers import auth, columns, export, parse, share, tasks, workspaces
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -78,6 +78,7 @@ async def security_headers_middleware(request: Request, call_next):
 
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(workspaces.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(parse.router, prefix="/api/v1")
 app.include_router(export.router, prefix="/api/v1")

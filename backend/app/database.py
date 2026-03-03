@@ -234,6 +234,23 @@ def seed_core_columns_for_user(session: Session, user_id: int):
     session.commit()
 
 
+def seed_core_columns_for_workspace(session: Session, workspace_id: int):
+    """Insert core column configs for a specific workspace."""
+    from .models.column_config import ColumnConfig
+
+    existing = session.exec(
+        select(ColumnConfig).where(ColumnConfig.workspace_id == workspace_id)
+    ).all()
+    existing_keys = {c.field_key for c in existing}
+
+    for col_data in CORE_COLUMNS:
+        if col_data["field_key"] not in existing_keys:
+            col = ColumnConfig(**col_data, workspace_id=workspace_id, is_visible=True)
+            session.add(col)
+
+    session.commit()
+
+
 def seed_core_columns():
     """Seed core columns for all existing users."""
     from .models.user import User

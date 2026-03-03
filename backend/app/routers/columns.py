@@ -26,13 +26,16 @@ def generate_field_key(display_name: str) -> str:
 
 
 @router.get("", response_model=list[ColumnConfigPublic])
-def list_columns(session: SessionDep, current_user: CurrentUserDep):
-    statement = select(ColumnConfig).where(ColumnConfig.user_id == current_user.id).order_by(ColumnConfig.position)
+def list_columns(session: SessionDep, current_user: CurrentUserDep, workspace_id: Optional[int] = None):
+    if workspace_id:
+        statement = select(ColumnConfig).where(ColumnConfig.workspace_id == workspace_id).order_by(ColumnConfig.position)
+    else:
+        statement = select(ColumnConfig).where(ColumnConfig.user_id == current_user.id).order_by(ColumnConfig.position)
     return session.exec(statement).all()
 
 
 @router.post("", response_model=ColumnConfigPublic, status_code=201)
-def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user: CurrentUserDep):
+def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user: CurrentUserDep, workspace_id: Optional[int] = None):
     if col_in.field_type not in VALID_FIELD_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid field_type. Must be one of: {', '.join(VALID_FIELD_TYPES)}")
 
@@ -73,6 +76,7 @@ def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user:
         is_required=False,
         options=col_in.options if col_in.field_type == "select" else None,
         user_id=current_user.id,
+        workspace_id=workspace_id,
     )
     session.add(col)
     session.commit()

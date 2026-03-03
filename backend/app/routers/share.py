@@ -3,6 +3,7 @@ import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/share", tags=["share"])
 
 class ShareRequest(BaseModel):
     task_ids: list[int]
+    workspace_id: Optional[int] = None
 
 
 @router.post("")
@@ -41,6 +43,7 @@ def create_share_link(request: ShareRequest, session: SessionDep, current_user: 
         share_token=token,
         task_ids=json.dumps(request.task_ids),
         user_id=current_user.id,
+        workspace_id=request.workspace_id,
         expires_at=datetime.now(timezone.utc) + timedelta(days=SHARE_LINK_EXPIRY_DAYS),
     )
     session.add(shared)

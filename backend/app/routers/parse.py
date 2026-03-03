@@ -16,6 +16,7 @@ class ParseRequest(BaseModel):
     text: str
     provider: Optional[str] = None
     tone: Optional[str] = None
+    workspace_id: Optional[int] = None
 
 
 @router.post("")
@@ -23,10 +24,14 @@ def parse_text(body: ParseRequest, session: SessionDep, current_user: CurrentUse
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-    # Fetch custom columns so LLM knows about them (scoped to user)
+    # Fetch custom columns so LLM knows about them (scoped to workspace or user)
+    if body.workspace_id:
+        col_filter = ColumnConfig.workspace_id == body.workspace_id
+    else:
+        col_filter = ColumnConfig.user_id == current_user.id
     custom_cols = session.exec(
         select(ColumnConfig)
-        .where(ColumnConfig.user_id == current_user.id, ColumnConfig.is_core == False, ColumnConfig.is_visible == True)
+        .where(col_filter, ColumnConfig.is_core == False, ColumnConfig.is_visible == True)
         .order_by(ColumnConfig.position)
     ).all()
     custom_fields_spec = [
