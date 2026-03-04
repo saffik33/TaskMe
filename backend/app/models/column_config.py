@@ -10,7 +10,7 @@ def _utcnow() -> datetime:
 
 
 class ColumnConfig(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("user_id", "field_key", name="uq_user_field_key"),)
+    __table_args__ = (UniqueConstraint("user_id", "workspace_id", "field_key", name="uq_user_workspace_field_key"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("user.id"), nullable=True, index=True))

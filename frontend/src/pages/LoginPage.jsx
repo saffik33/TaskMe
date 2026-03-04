@@ -25,7 +25,7 @@ export default function LoginPage() {
   useEffect(() => {
     const token = searchParams.get('token')
     if (token) {
-      localStorage.setItem('token', token)
+      sessionStorage.setItem('token', token)
       navigate('/', { replace: true })
       return
     }

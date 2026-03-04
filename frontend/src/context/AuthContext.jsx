@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (!token) {
       setLoading(false)
       return
@@ -16,14 +16,14 @@ export function AuthProvider({ children }) {
     getMe()
       .then((res) => setUser(res.data))
       .catch(() => {
-        localStorage.removeItem('token')
+        sessionStorage.removeItem('token')
       })
       .finally(() => setLoading(false))
   }, [])
 
   const login = useCallback(async (username, password) => {
     const res = await apiLogin(username, password)
-    localStorage.setItem('token', res.data.access_token)
+    sessionStorage.setItem('token', res.data.access_token)
     setUser(res.data.user)
     return res.data
   }, [])
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token')
+    sessionStorage.removeItem('token')
     setUser(null)
   }, [])
 

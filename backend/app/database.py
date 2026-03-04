@@ -286,6 +286,35 @@ def seed_core_columns():
             seed_core_columns_for_user(session, user.id)
 
 
+def migrate_fix_column_constraint():
+    """Fix columnconfig unique constraint to include workspace_id."""
+    inspector = inspect(engine)
+    constraints = inspector.get_unique_constraints("columnconfig")
+    old_exists = any(c["name"] == "uq_user_field_key" for c in constraints)
+
+    if old_exists:
+        with Session(engine) as session:
+            session.exec(text("ALTER TABLE columnconfig DROP CONSTRAINT uq_user_field_key"))
+            session.exec(text(
+                "ALTER TABLE columnconfig ADD CONSTRAINT uq_user_workspace_field_key "
+                "UNIQUE (user_id, workspace_id, field_key)"
+            ))
+            session.commit()
+
+    # Seed columns for any workspaces missing them
+    from .models.workspace import Workspace
+    from .models.column_config import ColumnConfig
+
+    with Session(engine) as session:
+        workspaces = session.exec(select(Workspace)).all()
+        for ws in workspaces:
+            count = len(session.exec(
+                select(ColumnConfig).where(ColumnConfig.workspace_id == ws.id)
+            ).all())
+            if count == 0:
+                seed_core_columns_for_workspace(session, ws.id, ws.owner_id)
+
+
 def get_session():
     with Session(engine) as session:
         yield session

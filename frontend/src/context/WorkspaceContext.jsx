@@ -17,8 +17,8 @@ export function WorkspaceProvider({ children }) {
     try {
       const res = await fetchWorkspaces()
       setWorkspaces(res.data)
-      // Set active workspace from localStorage or default to first
-      const savedId = localStorage.getItem('activeWorkspaceId')
+      // Set active workspace from sessionStorage or default to first
+      const savedId = sessionStorage.getItem('activeWorkspaceId')
       const saved = res.data.find((w) => w.id === Number(savedId))
       setActiveWorkspace(saved || res.data[0] || null)
     } catch {
@@ -34,7 +34,7 @@ export function WorkspaceProvider({ children }) {
 
   const switchWorkspace = useCallback((workspace) => {
     setActiveWorkspace(workspace)
-    localStorage.setItem('activeWorkspaceId', String(workspace.id))
+    sessionStorage.setItem('activeWorkspaceId', String(workspace.id))
   }, [])
 
   const addWorkspace = useCallback(async (data) => {
