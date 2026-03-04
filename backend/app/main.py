@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from .config import settings, check_jwt_secret
-from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, migrate_add_email_verification, migrate_add_workspaces, migrate_backfill_workspaces, seed_core_columns
+from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, migrate_add_email_verification, migrate_add_oauth, migrate_add_workspaces, migrate_backfill_workspaces, seed_core_columns
 from .routers import auth, columns, export, parse, share, tasks, workspaces
 
 limiter = Limiter(key_func=get_remote_address)
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
     migrate_add_user_support()
     migrate_assign_orphan_data()
     migrate_add_email_verification()
+    migrate_add_oauth()
     migrate_add_workspaces()
     migrate_backfill_workspaces()
     seed_core_columns()

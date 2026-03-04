@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
 
     model_config = {"env_file": str(ENV_FILE)}
 

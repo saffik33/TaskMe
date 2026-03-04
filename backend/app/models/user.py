@@ -15,7 +15,8 @@ class UserBase(SQLModel):
 
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    hashed_password: str = Field(max_length=255)
+    hashed_password: Optional[str] = Field(default=None, max_length=255)
+    oauth_provider: Optional[str] = Field(default=None, max_length=20)
     created_at: datetime = Field(default_factory=_utcnow)
     email_verified: bool = Field(default=False)
     verification_token: Optional[str] = Field(default=None, max_length=64)

@@ -132,7 +132,19 @@ async def resend_verification(req: ResendRequest, session: SessionDep):
 @router.post("/login")
 def login(credentials: UserLogin, session: SessionDep):
     user = session.exec(select(User).where(User.username == credentials.username)).first()
-    if not user or not verify_password(credentials.password, user.hashed_password):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # OAuth-only user (no password set)
+    if user.oauth_provider and not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"This account uses {user.oauth_provider.title()} sign-in. Please use the '{user.oauth_provider.title()}' button.",
+        )
+    if not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
@@ -160,3 +172,125 @@ def login(credentials: UserLogin, session: SessionDep):
 @router.get("/me", response_model=UserPublic)
 def get_me(current_user: CurrentUserDep):
     return current_user
+
+
+# --- Google OAuth ---
+
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+
+@router.get("/oauth/google/authorize")
+def google_authorize():
+    client_id = os.getenv("GOOGLE_CLIENT_ID", settings.GOOGLE_CLIENT_ID)
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Google OAuth not configured")
+
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    redirect_uri = f"{backend_url}/api/v1/auth/oauth/google/callback"
+    state = secrets.token_urlsafe(16)
+
+    google_auth_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+        f"?client_id={client_id}"
+        f"&redirect_uri={redirect_uri}"
+        f"&response_type=code"
+        f"&scope=openid%20email%20profile"
+        f"&state={state}"
+        f"&access_type=offline"
+        f"&prompt=consent"
+    )
+    return RedirectResponse(url=google_auth_url)
+
+
+@router.get("/oauth/google/callback")
+def google_callback(code: str, session: SessionDep, state: str = None):
+    import httpx
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID", settings.GOOGLE_CLIENT_ID)
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", settings.GOOGLE_CLIENT_SECRET)
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    frontend_url = _get_frontend_url()
+    redirect_uri = f"{backend_url}/api/v1/auth/oauth/google/callback"
+
+    # Exchange code for tokens
+    token_resp = httpx.post(GOOGLE_TOKEN_URL, data={
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+    })
+    if token_resp.status_code != 200:
+        logger.error("Google token exchange failed: %s", token_resp.text)
+        return RedirectResponse(url=f"{frontend_url}/login?error=google_failed")
+
+    tokens = token_resp.json()
+    access_token = tokens.get("access_token")
+
+    # Fetch user info from Google
+    userinfo_resp = httpx.get(GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
+    if userinfo_resp.status_code != 200:
+        logger.error("Google userinfo failed: %s", userinfo_resp.text)
+        return RedirectResponse(url=f"{frontend_url}/login?error=google_failed")
+
+    google_user = userinfo_resp.json()
+    google_email = google_user.get("email", "")
+    google_name = google_user.get("name", "")
+
+    if not google_email:
+        return RedirectResponse(url=f"{frontend_url}/login?error=no_email")
+
+    # Find or create user
+    user = session.exec(select(User).where(User.email == google_email)).first()
+
+    if not user:
+        # Create new user from Google profile
+        username = google_email.split("@")[0]
+        # Ensure unique username
+        base_username = username
+        counter = 1
+        while session.exec(select(User).where(User.username == username)).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = User(
+            username=username,
+            email=google_email,
+            hashed_password=None,
+            oauth_provider="google",
+            email_verified=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        # Create default workspace for new user
+        from ..models.workspace import Workspace, WorkspaceMember
+        from ..database import seed_core_columns_for_user, seed_core_columns_for_workspace
+
+        seed_core_columns_for_user(session, user.id)
+
+        ws = Workspace(name="My Tasks", owner_id=user.id)
+        session.add(ws)
+        session.commit()
+        session.refresh(ws)
+
+        member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
+        session.add(member)
+        session.commit()
+
+        seed_core_columns_for_workspace(session, ws.id, user.id)
+    else:
+        # Existing user — update oauth_provider if not set
+        if not user.oauth_provider:
+            user.oauth_provider = "google"
+            user.email_verified = True
+            session.add(user)
+            session.commit()
+
+    # Generate JWT token
+    token = create_access_token(data={"sub": user.username, "user_id": user.id})
+
+    # Redirect to frontend with token
+    return RedirectResponse(url=f"{frontend_url}/login?token={token}")

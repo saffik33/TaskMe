@@ -142,6 +142,25 @@ def migrate_add_email_verification():
         session.commit()
 
 
+def migrate_add_oauth():
+    """Add oauth_provider column and make hashed_password nullable."""
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    if "user" not in existing_tables:
+        return
+
+    columns = [col["name"] for col in inspector.get_columns("user")]
+    with Session(engine) as session:
+        if "oauth_provider" not in columns:
+            session.exec(text('ALTER TABLE "user" ADD COLUMN oauth_provider VARCHAR(20)'))
+        # Make hashed_password nullable (for OAuth users with no password)
+        try:
+            session.exec(text('ALTER TABLE "user" ALTER COLUMN hashed_password DROP NOT NULL'))
+        except Exception:
+            pass  # Already nullable or SQLite
+        session.commit()
+
+
 def migrate_add_workspaces():
     """Add workspace tables and workspace_id columns to existing tables."""
     inspector = inspect(engine)
