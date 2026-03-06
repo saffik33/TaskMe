@@ -8,6 +8,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // One-time migration: localStorage → sessionStorage
+    if (!sessionStorage.getItem('token') && localStorage.getItem('token')) {
+      sessionStorage.setItem('token', localStorage.getItem('token'))
+      localStorage.removeItem('token')
+    }
     const token = sessionStorage.getItem('token')
     if (!token) {
       setLoading(false)
