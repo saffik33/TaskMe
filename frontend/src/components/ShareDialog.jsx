@@ -67,7 +67,7 @@ export default function ShareDialog({ open, taskIds, onClose }) {
         </button>
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-            <Link className="w-5 h-5 text-indigo-600" />
+            <Link className="w-5 h-5 text-purple-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">Share Tasks</h3>
         </div>
@@ -113,7 +113,7 @@ export default function ShareDialog({ open, taskIds, onClose }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="recipient@example.com"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleSendEmail()}
                 />
                 <button

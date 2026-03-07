@@ -121,7 +121,7 @@ export default function TaskTable({ tasks, onEdit, onDelete, onNotify, onFieldCh
           <div className="flex items-center justify-center">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
               checked={table.getIsAllRowsSelected()}
               ref={(el) => {
                 if (el) el.indeterminate = table.getIsSomeRowsSelected()
@@ -134,7 +134,7 @@ export default function TaskTable({ tasks, onEdit, onDelete, onNotify, onFieldCh
           <div className="flex items-center justify-center">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
               checked={row.getIsSelected()}
               onChange={row.getToggleSelectedHandler()}
               onClick={(e) => e.stopPropagation()}

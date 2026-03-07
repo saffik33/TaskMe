@@ -76,7 +76,7 @@ export default function TaskModal({ open, task, onSave, onClose }) {
     setCustomForm((f) => ({ ...f, [fieldKey]: e.target.value }))
 
   const inputClass =
-    'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+    'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

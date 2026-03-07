@@ -1,6 +1,5 @@
 import { LogOut, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
@@ -12,7 +11,6 @@ export default function Layout({ children }) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <img src="/taskme-header.png" alt="TaskMe" className="h-12" />
-              <WorkspaceSwitcher />
             </div>
             <div className="flex items-center gap-3">
               {user && (

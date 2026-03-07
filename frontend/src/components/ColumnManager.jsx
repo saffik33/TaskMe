@@ -199,13 +199,13 @@ export default function ColumnManager({ open, onClose }) {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Column name"
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             />
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
-              className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               {FIELD_TYPES.map((ft) => (
                 <option key={ft.value} value={ft.value}>
@@ -227,7 +227,7 @@ export default function ColumnManager({ open, onClose }) {
               value={newOptions}
               onChange={(e) => setNewOptions(e.target.value)}
               placeholder="Options (comma-separated, e.g. Sprint 1, Sprint 2, Sprint 3)"
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           )}
         </div>

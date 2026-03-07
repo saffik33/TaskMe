@@ -74,7 +74,7 @@ export default function NaturalLanguageInput() {
           onChange={(e) => setText(e.target.value)}
           placeholder="e.g. John needs to finish the quarterly report by March 15. Sarah should review the budget proposal next week - it's urgent. Mike will set up the new server, email: mike@company.com"
           rows={4}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-gray-400"
+          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none placeholder:text-gray-400"
         />
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-2">
@@ -152,7 +152,7 @@ export default function NaturalLanguageInput() {
                 <input
                   value={task.task_name}
                   onChange={(e) => updateParsedTask(i, 'task_name', e.target.value)}
-                  className="w-full text-sm font-semibold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none pb-1 mb-2"
+                  className="w-full text-sm font-semibold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none pb-1 mb-2"
                 />
                 <div className="space-y-1.5 text-xs text-gray-500">
                   {task.owner && (
@@ -161,7 +161,7 @@ export default function NaturalLanguageInput() {
                       <input
                         value={task.owner}
                         onChange={(e) => updateParsedTask(i, 'owner', e.target.value)}
-                        className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none"
+                        className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none"
                       />
                     </div>
                   )}
@@ -172,7 +172,7 @@ export default function NaturalLanguageInput() {
                         type="date"
                         value={task.due_date}
                         onChange={(e) => updateParsedTask(i, 'due_date', e.target.value)}
-                        className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none"
+                        className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none"
                       />
                     </div>
                   )}
@@ -181,7 +181,7 @@ export default function NaturalLanguageInput() {
                     <select
                       value={task.priority}
                       onChange={(e) => updateParsedTask(i, 'priority', e.target.value)}
-                      className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none"
+                      className="bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none"
                     >
                       {TASK_PRIORITIES.map((p) => (
                         <option key={p.value} value={p.value}>

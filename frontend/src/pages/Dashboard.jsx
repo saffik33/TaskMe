@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import ShareDialog from '../components/ShareDialog'
 import CopyMoveDialog from '../components/CopyMoveDialog'
 import ColumnManager from '../components/ColumnManager'
+import WorkspaceSwitcher from '../components/WorkspaceSwitcher'
 import { exportExcel, sendNotification } from '../api/tasks'
 
 export default function Dashboard() {
@@ -142,6 +143,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <NaturalLanguageInput />
+
+      {/* Workspace selector */}
+      <WorkspaceSwitcher />
 
       {/* Actions bar */}
       <div className="flex items-center justify-between gap-3">

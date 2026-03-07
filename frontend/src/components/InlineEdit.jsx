@@ -57,7 +57,7 @@ export default function InlineEdit({
     if (e.key === 'Escape') handleCancel()
   }
 
-  const inputClass = `w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+  const inputClass = `w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
     error ? 'border-red-400 focus:ring-red-400' : 'border-gray-300'
   }`
 
