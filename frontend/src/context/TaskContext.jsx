@@ -17,7 +17,11 @@ export function TaskProvider({ children }) {
     search: '',
     status: '',
     priority: '',
+    statuses: '',
+    priorities: '',
     owner: '',
+    date_from: '',
+    date_to: '',
     sort_by: 'created_at',
     order: 'desc',
   })
@@ -31,6 +35,10 @@ export function TaskProvider({ children }) {
       if (filters.status) params.status = filters.status
       if (filters.priority) params.priority = filters.priority
       if (filters.owner) params.owner = filters.owner
+      if (filters.statuses) params.statuses = filters.statuses
+      if (filters.priorities) params.priorities = filters.priorities
+      if (filters.date_from) params.date_from = filters.date_from
+      if (filters.date_to) params.date_to = filters.date_to
       params.sort_by = filters.sort_by
       params.order = filters.order
 
@@ -131,6 +139,31 @@ export function TaskProvider({ children }) {
     return res.data.tasks
   }
 
+  const smartSearchFilters = async (query, provider) => {
+    const res = await api.smartSearch(query, provider)
+    const parsed = res.data?.filters
+
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Smart search returned an invalid response')
+    }
+
+    const newFilters = {
+      search: parsed.search || '',
+      status: '',
+      priority: '',
+      statuses: Array.isArray(parsed.status) ? parsed.status.join(',') : '',
+      priorities: Array.isArray(parsed.priority) ? parsed.priority.join(',') : '',
+      owner: parsed.owner || '',
+      date_from: parsed.date_from || '',
+      date_to: parsed.date_to || '',
+      sort_by: parsed.sort_by || 'created_at',
+      order: parsed.order || 'desc',
+    }
+
+    setFilters(newFilters)
+    return parsed
+  }
+
   return (
     <TaskContext.Provider
       value={{
@@ -146,6 +179,7 @@ export function TaskProvider({ children }) {
         removeAllTasks,
         removeBulkTasks,
         parseTasks,
+        smartSearchFilters,
       }}
     >
       {children}

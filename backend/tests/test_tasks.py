@@ -397,3 +397,48 @@ def test_search_wildcards_are_escaped(client, user_a):
     names = [t["task_name"] for t in resp.json()]
     assert "Abc" in names
     assert "Xyz" not in names
+
+
+# --- Phase 2: Smart search (LLM mocked) ---
+
+from unittest.mock import patch
+
+
+@patch("app.routers.tasks.parse_search_query")
+def test_smart_search_success(mock_llm, client, user_a):
+    mock_llm.return_value = {
+        "status": ["In Progress", "To Do"],
+        "priority": ["Critical"],
+    }
+    resp = client.post("/api/v1/tasks/smart-search",
+                       json={"query": "in progress and to do with critical priority"},
+                       headers=user_a["headers"])
+    assert resp.status_code == 200
+    filters = resp.json()["filters"]
+    assert "In Progress" in filters["status"]
+    assert "To Do" in filters["status"]
+    assert "Critical" in filters["priority"]
+
+
+def test_smart_search_empty_query_400(client, user_a):
+    resp = client.post("/api/v1/tasks/smart-search",
+                       json={"query": "   "},
+                       headers=user_a["headers"])
+    assert resp.status_code == 400
+    assert "empty" in resp.json()["detail"].lower()
+
+
+def test_smart_search_requires_auth(client):
+    resp = client.post("/api/v1/tasks/smart-search",
+                       json={"query": "show me tasks"})
+    assert resp.status_code in (401, 403)
+
+
+@patch("app.routers.tasks.parse_search_query")
+def test_smart_search_llm_failure_500(mock_llm, client, user_a):
+    mock_llm.side_effect = Exception("LLM down")
+    resp = client.post("/api/v1/tasks/smart-search",
+                       json={"query": "show me tasks"},
+                       headers=user_a["headers"])
+    assert resp.status_code == 500
+    assert "Failed to parse" in resp.json()["detail"]

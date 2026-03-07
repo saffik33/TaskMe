@@ -22,6 +22,9 @@ export const deleteBulkTasks = (ids) => client.delete('/tasks/bulk/delete', { da
 export const parseText = (text, provider, tone, workspaceId) =>
   client.post('/parse', { text, provider, tone, workspace_id: workspaceId })
 
+export const smartSearch = (query, provider) =>
+  client.post('/tasks/smart-search', { query, provider })
+
 export const exportExcel = (params = {}) =>
   client.get('/export/excel', { params, responseType: 'blob' })
 

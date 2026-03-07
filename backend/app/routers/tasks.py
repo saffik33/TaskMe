@@ -1,13 +1,17 @@
 import json
+import logging
 from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import col, select
+
+logger = logging.getLogger(__name__)
 
 from ..database import SessionDep
 from ..dependencies import CurrentUserDep
+from ..services.llm_service import parse_search_query
 from ..models.task import (
     Task,
     TaskCreate,
@@ -87,6 +91,28 @@ def list_tasks(
     statement = statement.offset(offset).limit(limit)
     tasks = session.exec(statement).all()
     return tasks
+
+
+class SmartSearchRequest(BaseModel):
+    query: str = Field(..., max_length=500)
+    provider: Optional[str] = None
+
+
+@router.post("/smart-search")
+def smart_search(body: SmartSearchRequest, current_user: CurrentUserDep):
+    if not body.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+    try:
+        filters = parse_search_query(body.query, provider=body.provider)
+        return {"filters": filters}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except json.JSONDecodeError:
+        logger.warning("LLM returned malformed JSON for smart search query")
+        raise HTTPException(status_code=502, detail="AI returned an unparseable response. Try rephrasing your query.")
+    except Exception:
+        logger.exception("Smart search parsing failed")
+        raise HTTPException(status_code=500, detail="Failed to parse search query. Please try again.")
 
 
 class CopyMoveRequest(BaseModel):
