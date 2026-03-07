@@ -222,7 +222,7 @@ def google_callback(code: str, session: SessionDep, state: str = None):
         "grant_type": "authorization_code",
     })
     if token_resp.status_code != 200:
-        logger.error("Google token exchange failed: %s", token_resp.text)
+        logger.error("Google token exchange failed with status %d", token_resp.status_code)
         return RedirectResponse(url=f"{frontend_url}/login?error=google_failed")
 
     tokens = token_resp.json()
@@ -231,7 +231,7 @@ def google_callback(code: str, session: SessionDep, state: str = None):
     # Fetch user info from Google
     userinfo_resp = httpx.get(GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
     if userinfo_resp.status_code != 200:
-        logger.error("Google userinfo failed: %s", userinfo_resp.text)
+        logger.error("Google userinfo failed with status %d", userinfo_resp.status_code)
         return RedirectResponse(url=f"{frontend_url}/login?error=google_failed")
 
     google_user = userinfo_resp.json()

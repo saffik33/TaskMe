@@ -51,8 +51,13 @@ def check_jwt_secret():
         return
     if settings.JWT_SECRET_KEY != "CHANGE-ME-IN-PRODUCTION":
         return
-    # Default secret in production — warn but don't crash (let user fix via Railway dashboard)
+    # Default secret — crash in production, warn in dev
+    if os.getenv("RAILWAY_ENVIRONMENT"):
+        raise RuntimeError(
+            "FATAL: JWT_SECRET_KEY is set to the default placeholder in production. "
+            "Set JWT_SECRET_KEY in Railway Variables tab."
+        )
     logger.warning(
         "SECURITY WARNING: JWT_SECRET_KEY is set to the default placeholder. "
-        "Set JWT_SECRET_KEY in Railway Variables tab."
+        "Set JWT_SECRET_KEY before deploying to production."
     )

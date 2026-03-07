@@ -110,9 +110,8 @@ def migrate_assign_orphan_data():
             session.commit()
             session.refresh(admin)
             logger.warning(
-                "Auto-created admin user with generated password: %s  "
-                "CHANGE THIS PASSWORD IMMEDIATELY.",
-                generated_password,
+                "Auto-created admin user '%s'. Set a secure password via the app.",
+                admin.username,
             )
 
         # Assign all orphan data to admin
