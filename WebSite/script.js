@@ -59,6 +59,8 @@
     const phrases = [
         'Reimagined with AI',
         'Powered by GPT & Claude',
+        'Smart Search Built In',
+        'Multi-Workspace Ready',
         'Built for Modern Teams',
         'Effortless & Intelligent'
     ];
