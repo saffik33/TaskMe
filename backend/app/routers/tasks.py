@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -29,6 +29,10 @@ def list_tasks(
     priority: Optional[TaskPriority] = None,
     owner: Optional[str] = None,
     search: Optional[str] = None,
+    statuses: Optional[str] = None,
+    priorities: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     sort_by: Optional[str] = Query(default="created_at"),
     order: Optional[str] = Query(default="desc"),
     offset: int = 0,
@@ -46,10 +50,32 @@ def list_tasks(
     if owner:
         statement = statement.where(Task.owner == owner)
     if search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         statement = statement.where(
-            col(Task.task_name).contains(search)
-            | col(Task.description).contains(search)
+            col(Task.task_name).ilike(pattern)
+            | col(Task.description).ilike(pattern)
+            | col(Task.owner).ilike(pattern)
+            | col(Task.email).ilike(pattern)
         )
+    if statuses:
+        try:
+            status_list = [TaskStatus(s.strip()) for s in statuses.split(",")]
+        except ValueError:
+            valid = [s.value for s in TaskStatus]
+            raise HTTPException(status_code=400, detail=f"Invalid status value. Valid statuses: {valid}")
+        statement = statement.where(col(Task.status).in_(status_list))
+    if priorities:
+        try:
+            priority_list = [TaskPriority(p.strip()) for p in priorities.split(",")]
+        except ValueError:
+            valid = [p.value for p in TaskPriority]
+            raise HTTPException(status_code=400, detail=f"Invalid priority value. Valid priorities: {valid}")
+        statement = statement.where(col(Task.priority).in_(priority_list))
+    if date_from:
+        statement = statement.where(Task.due_date >= date_from)
+    if date_to:
+        statement = statement.where(Task.due_date <= date_to)
 
     ALLOWED_SORT = {"task_name", "created_at", "updated_at", "due_date", "start_date", "priority", "status", "owner"}
     sort_column = getattr(Task, sort_by) if sort_by in ALLOWED_SORT else Task.created_at
