@@ -201,9 +201,10 @@ def delete_task(task_id: int, session: SessionDep, current_user: CurrentUserDep)
 
 @router.delete("/bulk/delete")
 def delete_bulk_tasks(ids: list[int], session: SessionDep, current_user: CurrentUserDep):
-    for task_id in ids:
-        task = session.exec(select(Task).where(Task.id == task_id, Task.user_id == current_user.id)).first()
-        if task:
-            session.delete(task)
+    tasks = session.exec(
+        select(Task).where(Task.id.in_(ids), Task.user_id == current_user.id)
+    ).all()
+    for task in tasks:
+        session.delete(task)
     session.commit()
     return {"ok": True}

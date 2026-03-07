@@ -74,8 +74,8 @@ def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user:
     else:
         existing = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == field_key, ColumnConfig.user_id == current_user.id)).first()
     if existing:
-        i = 2
-        while True:
+        MAX_DEDUP = 100
+        for i in range(2, MAX_DEDUP + 2):
             candidate = f"{field_key}_{i}"
             if workspace_id:
                 dup = session.exec(select(ColumnConfig).where(ColumnConfig.field_key == candidate, ColumnConfig.workspace_id == workspace_id)).first()
@@ -84,7 +84,8 @@ def create_column(col_in: ColumnConfigCreate, session: SessionDep, current_user:
             if not dup:
                 field_key = candidate
                 break
-            i += 1
+        else:
+            raise HTTPException(status_code=400, detail="Too many columns with similar names")
 
     # Get max position — by workspace if provided, otherwise by user
     if workspace_id:
