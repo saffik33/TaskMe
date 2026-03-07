@@ -77,7 +77,7 @@ export default function TaskFilters({ view, onViewChange }) {
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={smartMode ? 'Describe what you\'re looking for...' : 'Search tasks...'}
-          className={`w-full pl-9 pr-20 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white ${smartMode ? 'border-purple-300 ring-1 ring-purple-200' : 'border-gray-200'}`}
+          className={`w-full pl-9 pr-20 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white ${smartMode ? 'border-purple-300 ring-1 ring-purple-200' : 'border-gray-200'}`}
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {smartLoading && <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />}
