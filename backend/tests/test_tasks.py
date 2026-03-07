@@ -404,7 +404,7 @@ def test_search_wildcards_are_escaped(client, user_a):
 from unittest.mock import patch
 
 
-@patch("app.routers.tasks.parse_search_query")
+@patch("app.services.llm_service.parse_search_query")
 def test_smart_search_success(mock_llm, client, user_a):
     mock_llm.return_value = {
         "status": ["In Progress", "To Do"],
@@ -434,7 +434,7 @@ def test_smart_search_requires_auth(client):
     assert resp.status_code in (401, 403)
 
 
-@patch("app.routers.tasks.parse_search_query")
+@patch("app.services.llm_service.parse_search_query")
 def test_smart_search_llm_failure_500(mock_llm, client, user_a):
     mock_llm.side_effect = Exception("LLM down")
     resp = client.post("/api/v1/tasks/smart-search",

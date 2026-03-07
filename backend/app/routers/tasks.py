@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 from ..database import SessionDep
 from ..dependencies import CurrentUserDep
-from ..services.llm_service import parse_search_query
 from ..models.task import (
     Task,
     TaskCreate,
@@ -103,6 +102,7 @@ def smart_search(body: SmartSearchRequest, current_user: CurrentUserDep):
     if not body.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
     try:
+        from ..services.llm_service import parse_search_query
         filters = parse_search_query(body.query, provider=body.provider)
         return {"filters": filters}
     except ValueError as e:
