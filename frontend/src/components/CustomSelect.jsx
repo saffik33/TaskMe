@@ -15,11 +15,11 @@ export default function CustomSelect({ value, onChange, options, placeholder }) 
 
   const selected = options.find((o) => o.value === value)
 
-  // Extract just the text color class from a color string like "bg-blue-100 text-blue-700"
+  // Extract text color and font classes from a color string like "bg-blue-100 text-blue-700 font-bold"
   const getTextClass = (color) => {
     if (!color) return ''
-    const match = color.match(/text-\S+/)
-    return match ? match[0] : ''
+    const parts = color.split(/\s+/).filter((c) => c.startsWith('text-') || c.startsWith('font-'))
+    return parts.join(' ')
   }
 
   // Extract just the bg color class

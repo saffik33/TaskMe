@@ -6,10 +6,10 @@ export const TASK_STATUSES = [
 ]
 
 export const TASK_PRIORITIES = [
-  { value: 'Low', label: 'Low', color: 'bg-slate-100 text-slate-700' },
-  { value: 'Medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'High', label: 'High', color: 'bg-orange-100 text-orange-800' },
-  { value: 'Critical', label: 'Critical', color: 'bg-red-100 text-red-800' },
+  { value: 'Low', label: 'Low', color: 'bg-blue-100 text-blue-600' },
+  { value: 'Medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-500' },
+  { value: 'High', label: 'High', color: 'bg-orange-100 text-orange-600' },
+  { value: 'Critical', label: 'Critical', color: 'bg-red-100 text-red-600 font-bold' },
 ]
 
 export const getStatusColor = (status) =>
