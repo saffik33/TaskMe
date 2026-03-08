@@ -69,8 +69,8 @@ export default function TaskFilters({ view, onViewChange }) {
   const owners = [...new Set(tasks.map((t) => t.owner).filter(Boolean))]
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative w-[280px]">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="relative w-full sm:w-[280px]">
         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <input
           value={search}

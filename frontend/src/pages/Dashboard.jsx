@@ -148,8 +148,8 @@ export default function Dashboard() {
       <WorkspaceSwitcher />
 
       {/* Actions bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <TaskFilters view={view} onViewChange={setView} />
           <button
             onClick={() => setColumnManagerOpen(true)}
@@ -159,7 +159,7 @@ export default function Dashboard() {
             <Settings className="w-4 h-4" /> Columns
           </button>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleExport}
             disabled={exporting || tasks.length === 0}
@@ -186,11 +186,11 @@ export default function Dashboard() {
 
       {/* Selection bar */}
       {selectedCount > 0 && (
-        <div className="flex items-center justify-between px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg">
           <span className="text-sm font-medium text-indigo-700">
             {selectedCount} task(s) selected
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setDeleteSelectedConfirm(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors"

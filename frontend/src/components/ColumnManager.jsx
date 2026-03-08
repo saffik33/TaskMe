@@ -193,7 +193,7 @@ export default function ColumnManager({ open, onClose }) {
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
             Add Custom Column
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               type="text"
               value={newName}
