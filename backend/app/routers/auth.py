@@ -294,3 +294,125 @@ def google_callback(code: str, session: SessionDep, state: str = None):
 
     # Redirect to frontend with token
     return RedirectResponse(url=f"{frontend_url}/login?token={token}")
+
+
+# --- Microsoft OAuth ---
+
+MICROSOFT_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+MICROSOFT_USERINFO_URL = "https://graph.microsoft.com/v1.0/me"
+
+
+@router.get("/oauth/microsoft/authorize")
+def microsoft_authorize():
+    client_id = os.getenv("MICROSOFT_CLIENT_ID", settings.MICROSOFT_CLIENT_ID)
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Microsoft OAuth not configured")
+
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    redirect_uri = f"{backend_url}/api/v1/auth/oauth/microsoft/callback"
+    state = secrets.token_urlsafe(16)
+
+    ms_auth_url = (
+        f"{MICROSOFT_AUTH_URL}"
+        f"?client_id={client_id}"
+        f"&redirect_uri={redirect_uri}"
+        f"&response_type=code"
+        f"&scope=openid%20email%20profile%20User.Read"
+        f"&state={state}"
+        f"&response_mode=query"
+    )
+    return RedirectResponse(url=ms_auth_url)
+
+
+@router.get("/oauth/microsoft/callback")
+def microsoft_callback(code: str, session: SessionDep, state: str = None):
+    import httpx
+
+    client_id = os.getenv("MICROSOFT_CLIENT_ID", settings.MICROSOFT_CLIENT_ID)
+    client_secret = os.getenv("MICROSOFT_CLIENT_SECRET", settings.MICROSOFT_CLIENT_SECRET)
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    frontend_url = _get_frontend_url()
+    redirect_uri = f"{backend_url}/api/v1/auth/oauth/microsoft/callback"
+
+    # Exchange code for tokens
+    token_resp = httpx.post(MICROSOFT_TOKEN_URL, data={
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+        "scope": "openid email profile User.Read",
+    })
+    if token_resp.status_code != 200:
+        logger.error("Microsoft token exchange failed with status %d", token_resp.status_code)
+        return RedirectResponse(url=f"{frontend_url}/login?error=microsoft_failed")
+
+    tokens = token_resp.json()
+    access_token = tokens.get("access_token")
+
+    # Fetch user info from Microsoft Graph
+    userinfo_resp = httpx.get(MICROSOFT_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
+    if userinfo_resp.status_code != 200:
+        logger.error("Microsoft userinfo failed with status %d", userinfo_resp.status_code)
+        return RedirectResponse(url=f"{frontend_url}/login?error=microsoft_failed")
+
+    ms_user = userinfo_resp.json()
+    ms_email = ms_user.get("mail") or ms_user.get("userPrincipalName", "")
+    ms_name = ms_user.get("displayName", "")
+
+    if not ms_email:
+        return RedirectResponse(url=f"{frontend_url}/login?error=no_email")
+
+    # Find or create user
+    user = session.exec(select(User).where(User.email == ms_email)).first()
+
+    if not user:
+        # Create new user from Microsoft profile
+        username = ms_email.split("@")[0]
+        base_username = username
+        counter = 1
+        while session.exec(select(User).where(User.username == username)).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = User(
+            username=username,
+            email=ms_email,
+            hashed_password=None,
+            oauth_provider="microsoft",
+            email_verified=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        # Create default workspace for new user
+        from ..models.workspace import Workspace, WorkspaceMember
+        from ..database import seed_core_columns_for_user, seed_core_columns_for_workspace
+
+        seed_core_columns_for_user(session, user.id)
+
+        ws = Workspace(name="My Tasks", owner_id=user.id)
+        session.add(ws)
+        session.commit()
+        session.refresh(ws)
+
+        member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
+        session.add(member)
+        session.commit()
+
+        seed_core_columns_for_workspace(session, ws.id, user.id)
+    else:
+        # Existing user — update oauth_provider if not set
+        if not user.oauth_provider:
+            user.oauth_provider = "microsoft"
+            user.email_verified = True
+            session.add(user)
+            session.commit()
+
+    # Generate JWT token
+    token = create_access_token(data={"sub": user.username, "user_id": user.id})
+
+    # Redirect to frontend with token
+    return RedirectResponse(url=f"{frontend_url}/login?token={token}")

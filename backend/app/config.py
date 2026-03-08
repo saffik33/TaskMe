@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
 
     model_config = {"env_file": str(ENV_FILE)}
 

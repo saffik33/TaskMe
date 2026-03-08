@@ -30,8 +30,10 @@ export default function LoginPage() {
       return
     }
     const oauthError = searchParams.get('error')
-    if (oauthError) {
-      setError('Google sign-in failed. Please try again.')
+    if (oauthError === 'microsoft_failed') {
+      setError('Microsoft sign-in failed. Please try again.')
+    } else if (oauthError) {
+      setError('Sign-in failed. Please try again.')
     }
   }, [searchParams, navigate])
 
@@ -326,6 +328,18 @@ export default function LoginPage() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Sign in with Google
+            </a>
+            <a
+              href={`${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}/api/v1/auth/oauth/microsoft/authorize`}
+              className="mt-2 w-full inline-flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 21 21">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+              </svg>
+              Sign in with Microsoft
             </a>
           </div>
         </div>
