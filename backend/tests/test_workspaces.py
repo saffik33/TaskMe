@@ -1,5 +1,5 @@
 """P1 — Workspace CRUD tests."""
-from tests.conftest import _create_workspace
+from tests.conftest import _create_workspace, _add_member
 
 
 def test_workspace_role_enum_values():
@@ -92,3 +92,35 @@ def test_workspace_columns_seeded_on_create(client, user_a):
     cols = client.get(f"/api/v1/columns?workspace_id={ws_id}", headers=user_a["headers"])
     assert cols.status_code == 200
     assert len(cols.json()) == 8
+
+
+def test_list_workspaces_includes_role(client, user_a):
+    resp = client.get("/api/v1/workspaces", headers=user_a["headers"])
+    assert resp.status_code == 200
+    ws = resp.json()[0]
+    assert ws["role"] == "owner"
+
+
+def test_non_owner_cannot_update_workspace(client, session, user_a, user_b):
+    _add_member(session, user_a["workspace"], user_b["user"], "editor")
+    resp = client.patch(f"/api/v1/workspaces/{user_a['workspace'].id}",
+                        json={"name": "Hacked"}, headers=user_b["headers"])
+    assert resp.status_code == 403
+
+
+def test_delete_workspace_cleans_up_invites(client, session, user_a):
+    from app.models.workspace import WorkspaceInvite
+    from sqlmodel import select
+    ws2 = _create_workspace(session, user_a["user"], "WS2")
+    ws2_id = ws2.id
+    invite = WorkspaceInvite(workspace_id=ws2_id, email="x@test.com",
+                             role="editor", inviter_id=user_a["user"].id,
+                             token="cleanup-token")
+    session.add(invite)
+    session.commit()
+    resp = client.delete(f"/api/v1/workspaces/{ws2_id}", headers=user_a["headers"])
+    assert resp.status_code == 200
+    session.expire_all()
+    remaining = session.exec(select(WorkspaceInvite).where(
+        WorkspaceInvite.workspace_id == ws2_id)).all()
+    assert len(remaining) == 0
