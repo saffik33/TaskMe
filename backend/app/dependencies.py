@@ -42,3 +42,34 @@ def get_current_user(
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+def get_workspace_member(workspace_id: int, session: SessionDep, current_user: CurrentUserDep):
+    """Return the WorkspaceMember for the current user in the given workspace, or 404."""
+    from .models.workspace import WorkspaceMember
+    member = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.status == "accepted",
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    return member
+
+
+def require_editor(workspace_id: int, session: SessionDep, current_user: CurrentUserDep):
+    """Return WorkspaceMember if user is editor+, otherwise 403."""
+    member = get_workspace_member(workspace_id, session, current_user)
+    if member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Editor access required")
+    return member
+
+
+def require_owner(workspace_id: int, session: SessionDep, current_user: CurrentUserDep):
+    """Return WorkspaceMember if user is owner, otherwise 403."""
+    member = get_workspace_member(workspace_id, session, current_user)
+    if member.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner access required")
+    return member

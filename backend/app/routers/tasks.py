@@ -10,7 +10,7 @@ from sqlmodel import col, select
 logger = logging.getLogger(__name__)
 
 from ..database import SessionDep
-from ..dependencies import CurrentUserDep
+from ..dependencies import CurrentUserDep, get_workspace_member, require_editor
 from ..models.task import (
     Task,
     TaskCreate,
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 def list_tasks(
     session: SessionDep,
     current_user: CurrentUserDep,
-    workspace_id: Optional[int] = None,
+    workspace_id: int = Query(...),
     status: Optional[TaskStatus] = None,
     priority: Optional[TaskPriority] = None,
     owner: Optional[str] = None,
@@ -41,10 +41,9 @@ def list_tasks(
     offset: int = 0,
     limit: int = Query(default=100, le=500),
 ):
-    if workspace_id:
-        statement = select(Task).where(Task.workspace_id == workspace_id, Task.user_id == current_user.id)
-    else:
-        statement = select(Task).where(Task.user_id == current_user.id)
+    # Verify workspace membership (any role can read)
+    get_workspace_member(workspace_id, session, current_user)
+    statement = select(Task).where(Task.workspace_id == workspace_id)
 
     if status:
         statement = statement.where(Task.status == status)
@@ -182,7 +181,8 @@ def get_task(task_id: int, session: SessionDep, current_user: CurrentUserDep):
 
 
 @router.post("", response_model=TaskPublic, status_code=201)
-def create_task(task_in: TaskCreate, session: SessionDep, current_user: CurrentUserDep, workspace_id: Optional[int] = None):
+def create_task(task_in: TaskCreate, session: SessionDep, current_user: CurrentUserDep, workspace_id: int = Query(...)):
+    require_editor(workspace_id, session, current_user)
     task = Task.model_validate(task_in)
     task.user_id = current_user.id
     task.workspace_id = workspace_id

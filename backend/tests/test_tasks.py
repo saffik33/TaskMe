@@ -58,7 +58,7 @@ def test_list_tasks_with_search(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Buy groceries"}, headers=user_a["headers"])
 
-    resp = client.get(f"/api/v1/tasks?search=Deploy", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&search=Deploy", headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "Deploy server" in names
     assert "Buy groceries" not in names
@@ -71,7 +71,7 @@ def test_list_tasks_sorting(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Zeta"}, headers=user_a["headers"])
 
-    resp = client.get(f"/api/v1/tasks?sort_by=task_name&order=asc", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&sort_by=task_name&order=asc", headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert names == sorted(names)
 
@@ -126,7 +126,7 @@ def test_delete_all_tasks(client, user_a):
     resp = client.delete("/api/v1/tasks/all", headers=user_a["headers"])
     assert resp.status_code == 200
 
-    list_resp = client.get("/api/v1/tasks", headers=user_a["headers"])
+    list_resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}", headers=user_a["headers"])
     assert len(list_resp.json()) == 0
 
 
@@ -157,7 +157,7 @@ def test_filter_by_priority(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "High Task", "priority": "High"}, headers=user_a["headers"])
 
-    resp = client.get(f"/api/v1/tasks?priority=High", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&priority=High", headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "High Task" in names
     assert "Low Task" not in names
@@ -170,7 +170,7 @@ def test_filter_by_owner(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Bob Task", "owner": "Bob"}, headers=user_a["headers"])
 
-    resp = client.get(f"/api/v1/tasks?owner=Alice", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&owner=Alice", headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "Alice Task" in names
     assert "Bob Task" not in names
@@ -182,10 +182,10 @@ def test_pagination_offset_limit(client, user_a):
         client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                     json={"task_name": f"Task {i}"}, headers=user_a["headers"])
 
-    resp = client.get(f"/api/v1/tasks?limit=2&offset=0", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&limit=2&offset=0", headers=user_a["headers"])
     assert len(resp.json()) == 2
 
-    resp2 = client.get(f"/api/v1/tasks?limit=2&offset=2", headers=user_a["headers"])
+    resp2 = client.get(f"/api/v1/tasks?workspace_id={ws_id}&limit=2&offset=2", headers=user_a["headers"])
     assert len(resp2.json()) == 2
     # Make sure different tasks returned
     ids1 = {t["id"] for t in resp.json()}
@@ -236,7 +236,7 @@ def test_sort_by_invalid_falls_back(client, user_a):
     ws_id = user_a["workspace"].id
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "T1"}, headers=user_a["headers"])
-    resp = client.get("/api/v1/tasks?sort_by=nonexistent&order=desc", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&sort_by=nonexistent&order=desc", headers=user_a["headers"])
     assert resp.status_code == 200
 
 
@@ -252,7 +252,7 @@ def test_combined_filters(client, user_a):
                 json={"task_name": "Fix Bug", "status": "To Do", "priority": "Low"},
                 headers=user_a["headers"])
 
-    resp = client.get("/api/v1/tasks?status=To Do&priority=High&search=Deploy",
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&status=To Do&priority=High&search=Deploy",
                       headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "Deploy API" in names
@@ -275,12 +275,12 @@ def test_bulk_delete_empty_list(client, user_a):
     assert resp.status_code == 200
 
 
-def test_create_task_without_workspace(client, user_a):
+def test_create_task_requires_workspace(client, user_a):
+    """workspace_id is required for task creation after RBAC."""
     resp = client.post("/api/v1/tasks",
                        json={"task_name": "No Workspace"},
                        headers=user_a["headers"])
-    assert resp.status_code == 201
-    assert resp.json()["task_name"] == "No Workspace"
+    assert resp.status_code == 422  # validation error — missing workspace_id
 
 
 # --- Phase 1: Enhanced search tests ---
@@ -291,7 +291,7 @@ def test_search_case_insensitive(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Deploy Server"}, headers=user_a["headers"])
     # Search lowercase should find uppercase
-    resp = client.get("/api/v1/tasks?search=deploy", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&search=deploy", headers=user_a["headers"])
     assert resp.status_code == 200
     names = [t["task_name"] for t in resp.json()]
     assert "Deploy Server" in names
@@ -305,7 +305,7 @@ def test_search_by_owner(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Task B", "owner": "Bob Smith"},
                 headers=user_a["headers"])
-    resp = client.get("/api/v1/tasks?search=alice", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&search=alice", headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "Task A" in names
     assert "Task B" not in names
@@ -316,7 +316,7 @@ def test_search_by_email(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Email Task", "email": "jane@example.com"},
                 headers=user_a["headers"])
-    resp = client.get("/api/v1/tasks?search=jane@example", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&search=jane@example", headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "Email Task" in names
 
@@ -373,13 +373,15 @@ def test_filter_date_range(client, user_a):
 
 
 def test_filter_invalid_status_returns_400(client, user_a):
-    resp = client.get("/api/v1/tasks?statuses=To Do,NotAStatus", headers=user_a["headers"])
+    ws_id = user_a["workspace"].id
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&statuses=To Do,NotAStatus", headers=user_a["headers"])
     assert resp.status_code == 400
     assert "Invalid status" in resp.json()["detail"]
 
 
 def test_filter_invalid_priority_returns_400(client, user_a):
-    resp = client.get("/api/v1/tasks?priorities=High,Banana", headers=user_a["headers"])
+    ws_id = user_a["workspace"].id
+    resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}&priorities=High,Banana", headers=user_a["headers"])
     assert resp.status_code == 400
     assert "Invalid priority" in resp.json()["detail"]
 
@@ -393,7 +395,7 @@ def test_search_wildcards_are_escaped(client, user_a):
                 json={"task_name": "Xyz"}, headers=user_a["headers"])
     # Search for "_" as literal — should NOT match every single-char position
     # With proper escaping, "%" in the pattern is literal, not a wildcard
-    resp = client.get("/api/v1/tasks", params={"search": "Abc"}, headers=user_a["headers"])
+    resp = client.get("/api/v1/tasks", params={"workspace_id": ws_id, "search": "Abc"}, headers=user_a["headers"])
     names = [t["task_name"] for t in resp.json()]
     assert "Abc" in names
     assert "Xyz" not in names
