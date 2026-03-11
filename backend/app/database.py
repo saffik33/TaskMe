@@ -40,7 +40,7 @@ def check_database_url():
 
 def create_db_and_tables():
     # Import models so metadata is populated
-    from .models import Task, SharedList, ColumnConfig, User, Workspace, WorkspaceMember  # noqa: F401
+    from .models import Task, SharedList, ColumnConfig, User, Workspace, WorkspaceMember, WorkspaceInvite  # noqa: F401
     SQLModel.metadata.create_all(engine)
 
 
@@ -312,6 +312,25 @@ def migrate_fix_column_constraint():
             ).all())
             if count == 0:
                 seed_core_columns_for_workspace(session, ws.id, ws.owner_id)
+
+
+def migrate_add_rbac():
+    """Add RBAC columns to workspacemember and create workspaceinvite table."""
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+
+    with Session(engine) as session:
+        if "workspacemember" in existing_tables:
+            columns = [col["name"] for col in inspector.get_columns("workspacemember")]
+            if "status" not in columns:
+                session.exec(text(
+                    "ALTER TABLE workspacemember ADD COLUMN status VARCHAR(20) DEFAULT 'accepted'"
+                ))
+            if "inviter_id" not in columns:
+                session.exec(text(
+                    'ALTER TABLE workspacemember ADD COLUMN inviter_id INTEGER REFERENCES "user"(id)'
+                ))
+            session.commit()
 
 
 def get_session():

@@ -16,6 +16,17 @@ def test_workspace_member_has_status_and_inviter(session):
     assert member.inviter_id is None
 
 
+def test_workspace_invite_model(session):
+    from app.models.workspace import WorkspaceInvite
+    invite = WorkspaceInvite(
+        workspace_id=1, email="test@example.com", role="editor",
+        inviter_id=1, token="test-token-abc",
+    )
+    assert invite.email == "test@example.com"
+    assert invite.role == "editor"
+    assert invite.token == "test-token-abc"
+
+
 def test_create_workspace(client, user_a):
     resp = client.post("/api/v1/workspaces",
                        json={"name": "New WS"},
