@@ -122,24 +122,24 @@ class CopyMoveRequest(BaseModel):
 
 @router.post("/copy-move")
 def copy_move_tasks(req: CopyMoveRequest, session: SessionDep, current_user: CurrentUserDep):
-    from ..models.workspace import WorkspaceMember
-
     if req.action not in ("copy", "move"):
         raise HTTPException(status_code=400, detail="Action must be 'copy' or 'move'")
 
-    # Verify user has access to destination workspace
-    member = session.exec(
-        select(WorkspaceMember).where(
-            WorkspaceMember.workspace_id == req.destination_workspace_id,
-            WorkspaceMember.user_id == current_user.id,
-        )
-    ).first()
-    if not member:
-        raise HTTPException(status_code=403, detail="No access to destination workspace")
+    # Verify editor+ on destination workspace
+    require_editor(req.destination_workspace_id, session, current_user)
 
-    # Fetch tasks that belong to current user
+    # Fetch tasks and verify user has editor+ access to their source workspace(s)
+    from ..models.workspace import WorkspaceMember
+    editable_memberships = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.status == "accepted",
+            WorkspaceMember.role != "viewer",
+        )
+    ).all()
+    editable_ws_ids = [m.workspace_id for m in editable_memberships]
     tasks = session.exec(
-        select(Task).where(Task.id.in_(req.task_ids), Task.user_id == current_user.id)
+        select(Task).where(Task.id.in_(req.task_ids), Task.workspace_id.in_(editable_ws_ids))
     ).all()
     if not tasks:
         raise HTTPException(status_code=404, detail="No tasks found")
@@ -172,11 +172,27 @@ def copy_move_tasks(req: CopyMoveRequest, session: SessionDep, current_user: Cur
     return {"ok": True, "count": count, "action": req.action}
 
 
+def _get_task_with_access(task_id: int, session: SessionDep, current_user: CurrentUserDep):
+    """Fetch task and verify user is a member of its workspace. Returns (task, member) or raises 404."""
+    from ..models.workspace import WorkspaceMember
+    task = session.get(Task, task_id)
+    if not task or not task.workspace_id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    member = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == task.workspace_id,
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.status == "accepted",
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task, member
+
+
 @router.get("/{task_id}", response_model=TaskPublic)
 def get_task(task_id: int, session: SessionDep, current_user: CurrentUserDep):
-    task = session.exec(select(Task).where(Task.id == task_id, Task.user_id == current_user.id)).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task, _member = _get_task_with_access(task_id, session, current_user)
     return task
 
 
@@ -193,7 +209,8 @@ def create_task(task_in: TaskCreate, session: SessionDep, current_user: CurrentU
 
 
 @router.post("/bulk", response_model=list[TaskPublic], status_code=201)
-def create_bulk_tasks(tasks_in: list[TaskCreate], session: SessionDep, current_user: CurrentUserDep, workspace_id: Optional[int] = None):
+def create_bulk_tasks(tasks_in: list[TaskCreate], session: SessionDep, current_user: CurrentUserDep, workspace_id: int = Query(...)):
+    require_editor(workspace_id, session, current_user)
     tasks = []
     for task_in in tasks_in:
         task = Task.model_validate(task_in)
@@ -209,9 +226,9 @@ def create_bulk_tasks(tasks_in: list[TaskCreate], session: SessionDep, current_u
 
 @router.patch("/{task_id}", response_model=TaskPublic)
 def update_task(task_id: int, task_in: TaskUpdate, session: SessionDep, current_user: CurrentUserDep):
-    task = session.exec(select(Task).where(Task.id == task_id, Task.user_id == current_user.id)).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task, member = _get_task_with_access(task_id, session, current_user)
+    if member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Editor access required")
     update_data = task_in.model_dump(exclude_unset=True)
 
     # Merge custom_fields instead of replacing
@@ -234,6 +251,8 @@ def update_task(task_id: int, task_in: TaskUpdate, session: SessionDep, current_
 
 @router.delete("/all")
 def delete_all_tasks(session: SessionDep, current_user: CurrentUserDep):
+    # Delete all tasks for the current user across their workspaces
+    # (frontend sends this without workspace_id for backward compat)
     tasks = session.exec(select(Task).where(Task.user_id == current_user.id)).all()
     for task in tasks:
         session.delete(task)
@@ -243,9 +262,9 @@ def delete_all_tasks(session: SessionDep, current_user: CurrentUserDep):
 
 @router.delete("/{task_id}")
 def delete_task(task_id: int, session: SessionDep, current_user: CurrentUserDep):
-    task = session.exec(select(Task).where(Task.id == task_id, Task.user_id == current_user.id)).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task, member = _get_task_with_access(task_id, session, current_user)
+    if member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Editor access required")
     session.delete(task)
     session.commit()
     return {"ok": True}
@@ -253,8 +272,18 @@ def delete_task(task_id: int, session: SessionDep, current_user: CurrentUserDep)
 
 @router.delete("/bulk/delete")
 def delete_bulk_tasks(ids: list[int], session: SessionDep, current_user: CurrentUserDep):
+    from ..models.workspace import WorkspaceMember
+    # Get all workspace IDs user is an editor+ member of
+    memberships = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.status == "accepted",
+            WorkspaceMember.role != "viewer",
+        )
+    ).all()
+    editable_ws_ids = [m.workspace_id for m in memberships]
     tasks = session.exec(
-        select(Task).where(Task.id.in_(ids), Task.user_id == current_user.id)
+        select(Task).where(Task.id.in_(ids), Task.workspace_id.in_(editable_ws_ids))
     ).all()
     for task in tasks:
         session.delete(task)

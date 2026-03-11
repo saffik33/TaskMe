@@ -49,4 +49,4 @@ def test_move_to_unauthorized_workspace(client, user_a, user_b):
     resp = client.post("/api/v1/tasks/copy-move",
                        json={"task_ids": [t1["id"]], "destination_workspace_id": user_b["workspace"].id, "action": "move"},
                        headers=user_a["headers"])
-    assert resp.status_code == 403
+    assert resp.status_code in (403, 404)  # 404 = IDOR-safe (don't reveal workspace existence)
