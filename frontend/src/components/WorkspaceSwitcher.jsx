@@ -4,7 +4,13 @@ import { useWorkspaces } from '../context/WorkspaceContext'
 import toast from 'react-hot-toast'
 
 export default function WorkspaceSwitcher() {
-  const { workspaces, activeWorkspace, switchWorkspace, addWorkspace } = useWorkspaces()
+  const { workspaces, activeWorkspace, currentUserRole, switchWorkspace, addWorkspace } = useWorkspaces()
+
+  const roleBadgeColor = {
+    owner: 'bg-purple-100 text-purple-700',
+    editor: 'bg-blue-100 text-blue-700',
+    viewer: 'bg-gray-100 text-gray-600',
+  }
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -44,6 +50,11 @@ export default function WorkspaceSwitcher() {
       >
         <FolderOpen className="w-4 h-4" />
         <span className="max-w-[150px] truncate">{activeWorkspace.name}</span>
+        {currentUserRole && (
+          <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${roleBadgeColor[currentUserRole] || 'bg-gray-100 text-gray-600'}`}>
+            {currentUserRole}
+          </span>
+        )}
         <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -62,6 +73,11 @@ export default function WorkspaceSwitcher() {
             >
               <FolderOpen className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1 truncate">{ws.name}</span>
+              {ws.role && (
+                <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${roleBadgeColor[ws.role] || 'bg-gray-100 text-gray-600'}`}>
+                  {ws.role}
+                </span>
+              )}
               {ws.id === activeWorkspace.id && <Check className="w-4 h-4 text-purple-600" />}
             </button>
           ))}

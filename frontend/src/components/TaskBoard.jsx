@@ -53,7 +53,7 @@ function DroppableColumn({ status, tasks, onEdit, onDelete, onNotify }) {
   )
 }
 
-export default function TaskBoard({ tasks, onEdit, onDelete, onNotify, onStatusChange }) {
+export default function TaskBoard({ tasks, canEdit = true, onEdit, onDelete, onNotify, onStatusChange }) {
   const [activeTask, setActiveTask] = useState(null)
 
   const sensors = useSensors(
@@ -105,6 +105,23 @@ export default function TaskBoard({ tasks, onEdit, onDelete, onNotify, onStatusC
     )
   }
 
+  const boardContent = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {columns.map((col) => (
+        <DroppableColumn
+          key={col.value}
+          status={col}
+          tasks={col.tasks}
+          onEdit={canEdit ? onEdit : () => {}}
+          onDelete={canEdit ? onDelete : () => {}}
+          onNotify={canEdit ? onNotify : () => {}}
+        />
+      ))}
+    </div>
+  )
+
+  if (!canEdit) return boardContent
+
   return (
     <DndContext
       sensors={sensors}
@@ -112,18 +129,7 @@ export default function TaskBoard({ tasks, onEdit, onDelete, onNotify, onStatusC
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {columns.map((col) => (
-          <DroppableColumn
-            key={col.value}
-            status={col}
-            tasks={col.tasks}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onNotify={onNotify}
-          />
-        ))}
-      </div>
+      {boardContent}
       <DragOverlay>
         {activeTask ? (
           <div className="rotate-2 scale-105">

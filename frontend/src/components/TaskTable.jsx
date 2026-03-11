@@ -25,7 +25,7 @@ const CORE_SIZES = {
   priority: { size: 120, minSize: 90, maxSize: 180 },
 }
 
-export default function TaskTable({ tasks, onEdit, onDelete, onNotify, onFieldChange, rowSelection, onRowSelectionChange }) {
+export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onNotify, onFieldChange, rowSelection, onRowSelectionChange }) {
   const [sorting, setSorting] = useState([])
   const { visibleColumns } = useColumns()
 
@@ -237,7 +237,8 @@ export default function TaskTable({ tasks, onEdit, onDelete, onNotify, onFieldCh
       })
     })
 
-    // Always append the actions column
+    // Append the actions column only for editors/owners
+    if (!canEdit) return cols
     cols.push({
       id: 'actions',
       header: '',
@@ -284,7 +285,7 @@ export default function TaskTable({ tasks, onEdit, onDelete, onNotify, onFieldCh
     })
 
     return cols
-  }, [visibleColumns, onEdit, onDelete, onNotify, onFieldChange])
+  }, [visibleColumns, canEdit, onEdit, onDelete, onNotify, onFieldChange])
 
   const table = useReactTable({
     data: tasks,

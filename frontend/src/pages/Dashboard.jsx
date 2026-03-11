@@ -19,7 +19,8 @@ import { exportExcel, sendNotification } from '../api/tasks'
 export default function Dashboard() {
   const { tasks, loading, loadTasks, addTask, editTask, removeTask, removeBulkTasks } = useTasks()
   const { columns } = useColumns()
-  const { activeWorkspace } = useWorkspaces()
+  const { activeWorkspace, currentUserRole } = useWorkspaces()
+  const canEdit = currentUserRole === 'owner' || currentUserRole === 'editor'
 
   const [view, setView] = useState('table')
   const [modalOpen, setModalOpen] = useState(false)
@@ -142,7 +143,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <NaturalLanguageInput />
+      {canEdit && <NaturalLanguageInput />}
 
       {/* Workspace selector */}
       <WorkspaceSwitcher />
@@ -168,19 +169,23 @@ export default function Dashboard() {
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Export
           </button>
-          <button
-            onClick={() => setShareOpen(true)}
-            disabled={tasks.length === 0}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-purple-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50${selectedCount > 0 ? ' invisible' : ''}`}
-          >
-            <Share2 className="w-4 h-4" /> Share
-          </button>
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Add Task
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setShareOpen(true)}
+              disabled={tasks.length === 0}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-purple-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50${selectedCount > 0 ? ' invisible' : ''}`}
+            >
+              <Share2 className="w-4 h-4" /> Share
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Add Task
+            </button>
+          )}
         </div>
       </div>
 
@@ -236,16 +241,18 @@ export default function Dashboard() {
       ) : view === 'table' ? (
         <TaskTable
           tasks={tasks}
+          canEdit={canEdit}
           onEdit={handleEdit}
           onDelete={setDeleteTask}
           onNotify={handleNotify}
           onFieldChange={handleFieldChange}
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
+          rowSelection={canEdit ? rowSelection : {}}
+          onRowSelectionChange={canEdit ? setRowSelection : () => {}}
         />
       ) : (
         <TaskBoard
           tasks={tasks}
+          canEdit={canEdit}
           onEdit={handleEdit}
           onDelete={setDeleteTask}
           onNotify={handleNotify}
@@ -254,15 +261,17 @@ export default function Dashboard() {
       )}
 
       {/* Modals */}
-      <TaskModal
-        open={modalOpen}
-        task={editingTask}
-        onSave={handleSave}
-        onClose={() => {
-          setModalOpen(false)
-          setEditingTask(null)
-        }}
-      />
+      {canEdit && (
+        <TaskModal
+          open={modalOpen}
+          task={editingTask}
+          onSave={handleSave}
+          onClose={() => {
+            setModalOpen(false)
+            setEditingTask(null)
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteTask}

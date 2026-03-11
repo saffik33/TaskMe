@@ -9,6 +9,7 @@ export default function InlineEdit({
   maxLength,
   placeholder = '—',
   formatDisplay,
+  disabled = false,
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
@@ -28,6 +29,7 @@ export default function InlineEdit({
 
   const handleStart = (e) => {
     e.stopPropagation()
+    if (disabled) return
     setEditing(true)
     setError(false)
   }
@@ -83,12 +85,14 @@ export default function InlineEdit({
   return (
     <div
       onClick={handleStart}
-      className="group/edit flex items-center gap-1 cursor-pointer min-h-[28px] min-w-0"
+      className={`group/edit flex items-center gap-1 min-h-[28px] min-w-0 ${disabled ? '' : 'cursor-pointer'}`}
     >
       <span className={`truncate ${isEmpty ? 'text-gray-400' : ''}`}>
         {displayValue}
       </span>
-      <Pencil className="w-3 h-3 shrink-0 text-gray-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+      {!disabled && (
+        <Pencil className="w-3 h-3 shrink-0 text-gray-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+      )}
     </div>
   )
 }
