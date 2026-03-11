@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import select
 
 from ..database import SessionDep
-from ..dependencies import CurrentUserDep
+from ..dependencies import CurrentUserDep, get_workspace_member
 from ..models.column_config import ColumnConfig
 from ..models.task import Task, TaskPriority, TaskStatus
 from ..services.export_service import generate_excel
@@ -18,16 +18,14 @@ router = APIRouter(prefix="/export", tags=["export"])
 def export_excel(
     session: SessionDep,
     current_user: CurrentUserDep,
-    workspace_id: Optional[int] = None,
+    workspace_id: int = Query(...),
     status: Optional[TaskStatus] = None,
     priority: Optional[TaskPriority] = None,
     owner: Optional[str] = None,
     ids: Optional[str] = Query(default=None, description="Comma-separated task IDs"),
 ):
-    if workspace_id:
-        statement = select(Task).where(Task.workspace_id == workspace_id, Task.user_id == current_user.id)
-    else:
-        statement = select(Task).where(Task.user_id == current_user.id)
+    get_workspace_member(workspace_id, session, current_user)
+    statement = select(Task).where(Task.workspace_id == workspace_id)
 
     if ids:
         id_list = [int(i.strip()) for i in ids.split(",") if i.strip().isdigit()]
@@ -57,10 +55,10 @@ def export_excel(
         for t in tasks
     ]
 
-    # Fetch visible custom columns for export (scoped to user)
+    # Fetch visible custom columns for export (scoped to workspace)
     custom_cols = session.exec(
         select(ColumnConfig)
-        .where(ColumnConfig.user_id == current_user.id, ColumnConfig.is_core == False, ColumnConfig.is_visible == True)
+        .where(ColumnConfig.workspace_id == workspace_id, ColumnConfig.is_core == False, ColumnConfig.is_visible == True)
         .order_by(ColumnConfig.position)
     ).all()
     custom_col_dicts = [{"field_key": c.field_key, "display_name": c.display_name} for c in custom_cols]

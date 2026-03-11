@@ -13,7 +13,7 @@ from ..config import settings
 
 logger = logging.getLogger(__name__)
 from ..database import SessionDep
-from ..dependencies import CurrentUserDep
+from ..dependencies import CurrentUserDep, require_editor
 from ..models.share import SharedList
 from ..models.task import Task, TaskPublic
 
@@ -29,14 +29,21 @@ class ShareRequest(BaseModel):
 
 @router.post("")
 def create_share_link(request: ShareRequest, session: SessionDep, current_user: CurrentUserDep):
-    # Validate that all task_ids belong to the current user
-    owned_tasks = session.exec(
-        select(Task).where(Task.id.in_(request.task_ids), Task.user_id == current_user.id)
-    ).all()
-    owned_ids = {t.id for t in owned_tasks}
-    invalid_ids = [tid for tid in request.task_ids if tid not in owned_ids]
+    # Require editor+ on workspace
+    if request.workspace_id:
+        require_editor(request.workspace_id, session, current_user)
+        # Validate tasks belong to this workspace
+        valid_tasks = session.exec(
+            select(Task).where(Task.id.in_(request.task_ids), Task.workspace_id == request.workspace_id)
+        ).all()
+    else:
+        valid_tasks = session.exec(
+            select(Task).where(Task.id.in_(request.task_ids), Task.user_id == current_user.id)
+        ).all()
+    valid_ids = {t.id for t in valid_tasks}
+    invalid_ids = [tid for tid in request.task_ids if tid not in valid_ids]
     if invalid_ids:
-        raise HTTPException(status_code=403, detail="Some tasks do not belong to you")
+        raise HTTPException(status_code=403, detail="Some tasks do not belong to this workspace")
 
     token = secrets.token_urlsafe(32)
     shared = SharedList(

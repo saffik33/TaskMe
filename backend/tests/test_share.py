@@ -41,7 +41,7 @@ def test_export_excel(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "Export Me"}, headers=user_a["headers"])
 
-    resp = client.get("/api/v1/export/excel", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/export/excel?workspace_id={ws_id}", headers=user_a["headers"])
     assert resp.status_code == 200
     assert "spreadsheet" in resp.headers.get("content-type", "")
 
@@ -110,5 +110,5 @@ def test_export_with_ids_filter(client, user_a):
     t2 = client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                      json={"task_name": "T2"}, headers=user_a["headers"]).json()
 
-    resp = client.get(f"/api/v1/export/excel?ids={t1['id']},{t2['id']}", headers=user_a["headers"])
+    resp = client.get(f"/api/v1/export/excel?workspace_id={ws_id}&ids={t1['id']},{t2['id']}", headers=user_a["headers"])
     assert resp.status_code == 200
