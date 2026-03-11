@@ -23,13 +23,21 @@ vi.mock('../../api/tasks', () => ({
 
 vi.mock('../../api/workspaces', () => ({
   fetchWorkspaces: vi.fn(),
+  fetchMembers: vi.fn(),
   createWorkspace: vi.fn(),
   updateWorkspace: vi.fn(),
   deleteWorkspace: vi.fn(),
+  inviteMember: vi.fn(),
+  removeMember: vi.fn(),
+  changeRole: vi.fn(),
+}))
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 1, username: 'testuser', email: 'test@test.com' } }),
 }))
 
 import * as tasksApi from '../../api/tasks'
-import { fetchWorkspaces } from '../../api/workspaces'
+import { fetchWorkspaces, fetchMembers } from '../../api/workspaces'
 
 function TestConsumer() {
   const { tasks, loading, addTask, editTask, removeTask } = useTasks()
@@ -55,8 +63,9 @@ describe('TaskContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchWorkspaces.mockResolvedValue({
-      data: [{ id: 1, name: 'WS1' }],
+      data: [{ id: 1, name: 'WS1', role: 'owner' }],
     })
+    fetchMembers.mockResolvedValue({ data: { members: [], pending_invites: [] } })
   })
 
   it('loads tasks when workspace is active', async () => {
@@ -139,7 +148,8 @@ function ExtendedConsumer() {
 describe('TaskContext — rollback & bulk operations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchWorkspaces.mockResolvedValue({ data: [{ id: 1, name: 'WS1' }] })
+    fetchWorkspaces.mockResolvedValue({ data: [{ id: 1, name: 'WS1', role: 'owner' }] })
+    fetchMembers.mockResolvedValue({ data: { members: [], pending_invites: [] } })
   })
 
   it('editTask API failure rolls back state', async () => {

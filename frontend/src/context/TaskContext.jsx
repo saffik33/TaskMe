@@ -56,7 +56,7 @@ export function TaskProvider({ children }) {
   }, [loadTasks])
 
   const addTask = async (data) => {
-    const params = activeWorkspace ? { workspace_id: activeWorkspace.id } : {}
+    const params = { workspace_id: activeWorkspace.id }
     const res = await api.createTask(data, params)
     const newTask = normalizeTask(res.data)
     setTasks((prev) => [newTask, ...prev])
@@ -64,7 +64,7 @@ export function TaskProvider({ children }) {
   }
 
   const addBulkTasks = async (tasksData) => {
-    const params = activeWorkspace ? { workspace_id: activeWorkspace.id } : {}
+    const params = { workspace_id: activeWorkspace.id }
     const res = await api.createBulkTasks(tasksData, params)
     const newTasks = res.data.map(normalizeTask)
     setTasks((prev) => [...newTasks, ...prev])
