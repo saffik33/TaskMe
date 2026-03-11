@@ -1,8 +1,15 @@
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 
 from sqlalchemy import Column, ForeignKey, Integer, UniqueConstraint
 from sqlmodel import Field, SQLModel
+
+
+class WorkspaceRole(str, Enum):
+    OWNER = "owner"
+    EDITOR = "editor"
+    VIEWER = "viewer"
 
 
 def _utcnow() -> datetime:
@@ -24,6 +31,8 @@ class WorkspaceMember(SQLModel, table=True):
     workspace_id: int = Field(sa_column=Column(Integer, ForeignKey("workspace.id", ondelete="CASCADE"), nullable=False, index=True))
     user_id: int = Field(sa_column=Column(Integer, ForeignKey("user.id"), nullable=False, index=True))
     role: str = Field(default="owner", max_length=20)
+    status: str = Field(default="accepted", max_length=20)
+    inviter_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("user.id"), nullable=True))
     joined_at: datetime = Field(default_factory=_utcnow)
 
 
