@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Download, Share2, Loader2, Trash2, Settings, X, Copy } from 'lucide-react'
+import { Plus, Download, Share2, Loader2, Trash2, Settings, X, Copy, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTasks } from '../context/TaskContext'
 import { useColumns } from '../context/ColumnContext'
@@ -14,6 +14,7 @@ import ShareDialog from '../components/ShareDialog'
 import CopyMoveDialog from '../components/CopyMoveDialog'
 import ColumnManager from '../components/ColumnManager'
 import WorkspaceSwitcher from '../components/WorkspaceSwitcher'
+import MemberList from '../components/MemberList'
 import { exportExcel, sendNotification } from '../api/tasks'
 
 export default function Dashboard() {
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [rowSelection, setRowSelection] = useState({})
   const [deleteSelectedConfirm, setDeleteSelectedConfirm] = useState(false)
   const [columnManagerOpen, setColumnManagerOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
 
   const handleOpenCreate = () => {
     setEditingTask(null)
@@ -145,8 +147,18 @@ export default function Dashboard() {
     <div className="space-y-6">
       {canEdit && <NaturalLanguageInput />}
 
-      {/* Workspace selector */}
-      <WorkspaceSwitcher />
+      {/* Workspace selector + Members */}
+      <div className="flex items-center gap-2">
+        <WorkspaceSwitcher />
+        <button
+          onClick={() => setMembersOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          title="Workspace members"
+        >
+          <Users className="w-4 h-4" />
+          <span className="hidden sm:inline">Members</span>
+        </button>
+      </div>
 
       {/* Actions bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -308,6 +320,11 @@ export default function Dashboard() {
       <ColumnManager
         open={columnManagerOpen}
         onClose={() => setColumnManagerOpen(false)}
+      />
+
+      <MemberList
+        open={membersOpen}
+        onClose={() => setMembersOpen(false)}
       />
     </div>
   )
