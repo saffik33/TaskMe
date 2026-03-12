@@ -70,7 +70,7 @@ def list_members(workspace_id: int, session: SessionDep, current_user: CurrentUs
 
 
 @router.post("/workspaces/{workspace_id}/invite")
-def invite_member(workspace_id: int, req: InviteRequest, session: SessionDep, current_user: CurrentUserDep):
+async def invite_member(workspace_id: int, req: InviteRequest, session: SessionDep, current_user: CurrentUserDep):
     require_owner(workspace_id, session, current_user)
 
     # Validate role
@@ -80,6 +80,11 @@ def invite_member(workspace_id: int, req: InviteRequest, session: SessionDep, cu
     # Cannot invite self
     if req.email == current_user.email:
         raise HTTPException(status_code=400, detail="Cannot invite yourself")
+
+    # Get workspace name for email
+    from ..models.workspace import Workspace
+    ws = session.get(Workspace, workspace_id)
+    ws_name = ws.name if ws else "Unknown Workspace"
 
     # Check if already a member
     existing_user = session.exec(select(User).where(User.email == req.email)).first()
@@ -103,6 +108,16 @@ def invite_member(workspace_id: int, req: InviteRequest, session: SessionDep, cu
         session.add(member)
         session.commit()
         seed_core_columns_for_workspace(session, workspace_id, existing_user.id)
+
+        # Send notification email to existing user
+        try:
+            from ..services.email_service import send_workspace_added_email
+            await send_workspace_added_email(
+                existing_user.email, existing_user.username,
+                current_user.username, ws_name, req.role,
+            )
+        except Exception as e:
+            logger.error("Failed to send workspace added email to %s: %s", existing_user.email, str(e))
     else:
         # Check for existing invite
         existing_invite = session.exec(
@@ -122,6 +137,18 @@ def invite_member(workspace_id: int, req: InviteRequest, session: SessionDep, cu
         )
         session.add(invite)
         session.commit()
+
+        # Send invite email to non-existing user
+        try:
+            import os
+            from ..services.email_service import send_workspace_invite_email
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            invite_url = f"{frontend_url}/login?invite={invite.token}"
+            await send_workspace_invite_email(
+                req.email, current_user.username, ws_name, req.role, invite_url,
+            )
+        except Exception as e:
+            logger.error("Failed to send invite email to %s: %s", req.email, str(e))
 
     # Return same response regardless (email enumeration prevention)
     return {"message": "Invitation sent"}

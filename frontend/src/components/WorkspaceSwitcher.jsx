@@ -68,7 +68,7 @@ export default function WorkspaceSwitcher() {
                 setOpen(false)
               }}
               className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-purple-50 transition-colors ${
-                ws.id === activeWorkspace.id ? 'text-purple-700 font-medium bg-purple-50' : 'text-gray-700'
+                ws.id === activeWorkspace.id ? 'text-purple-700 font-medium bg-purple-50' : 'text-purple-500'
               }`}
             >
               <FolderOpen className="w-4 h-4 flex-shrink-0" />

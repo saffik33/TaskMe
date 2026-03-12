@@ -77,7 +77,7 @@ export default function MemberList({ open, onClose }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Workspace Members</h2>
+            <h2 className="text-lg font-semibold text-purple-700">Workspace Members</h2>
           </div>
           <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />
@@ -159,7 +159,7 @@ export default function MemberList({ open, onClose }) {
             <form onSubmit={handleInvite} className="space-y-3">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-gray-400 shrink-0" />
-                <span className="text-sm font-medium text-gray-700">Invite Member</span>
+                <span className="text-sm font-medium text-purple-700">Invite Member</span>
               </div>
               <div className="flex items-center gap-2">
                 <input

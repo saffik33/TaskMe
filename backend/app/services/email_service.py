@@ -184,3 +184,84 @@ async def send_task_notification(
     </html>
     """
     await _send_email(to_email, f"TaskMe: You have a task - {escape(task_name)}", html_body)
+
+
+async def send_workspace_added_email(
+    to_email: str, username: str, inviter_name: str, workspace_name: str, role: str
+):
+    safe_username = escape(username)
+    safe_inviter = escape(inviter_name)
+    safe_ws = escape(workspace_name)
+    safe_role = escape(role)
+    frontend_url = os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
+
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0;">TaskMe</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb;
+                    border-radius: 0 0 8px 8px;">
+            <p>Hi <strong>{safe_username}</strong>,</p>
+            <p><strong>{safe_inviter}</strong> added you as <strong>{safe_role}</strong> to the workspace <strong>{safe_ws}</strong>.</p>
+            <p>You can now access this workspace and its tasks in TaskMe.</p>
+            <div style="text-align: center; margin: 24px 0;">
+                <a href="{escape(frontend_url)}"
+                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                          color: white; padding: 12px 32px; border-radius: 8px;
+                          text-decoration: none; font-weight: bold; display: inline-block;">
+                    Open TaskMe
+                </a>
+            </div>
+            <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+                Sent via TaskMe - AI-Powered Task Management
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    await _send_email(to_email, f"TaskMe: You were added to {safe_ws}", html_body)
+
+
+async def send_workspace_invite_email(
+    to_email: str, inviter_name: str, workspace_name: str, role: str, invite_url: str
+):
+    safe_inviter = escape(inviter_name)
+    safe_ws = escape(workspace_name)
+    safe_role = escape(role)
+    safe_url = escape(invite_url)
+
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0;">TaskMe</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb;
+                    border-radius: 0 0 8px 8px;">
+            <p>Hi,</p>
+            <p><strong>{safe_inviter}</strong> invited you to join the workspace <strong>{safe_ws}</strong> as <strong>{safe_role}</strong> on TaskMe.</p>
+            <p>Create an account to start collaborating on tasks.</p>
+            <div style="text-align: center; margin: 24px 0;">
+                <a href="{safe_url}"
+                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                          color: white; padding: 12px 32px; border-radius: 8px;
+                          text-decoration: none; font-weight: bold; display: inline-block;">
+                    Join TaskMe
+                </a>
+            </div>
+            <p style="color: #6b7280; font-size: 14px;">
+                Or copy and paste this link in your browser:<br>
+                <a href="{safe_url}" style="color: #667eea; word-break: break-all;">{safe_url}</a>
+            </p>
+            <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+                This invite expires in 7 days. If you weren't expecting this, you can ignore this email.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    await _send_email(to_email, f"TaskMe: {safe_inviter} invited you to {safe_ws}", html_body)
