@@ -228,6 +228,10 @@ def accept_invite(token: str, session: SessionDep, current_user: CurrentUserDep)
         if expires < datetime.now(timezone.utc):
             raise HTTPException(status_code=410, detail="Invite has expired")
 
+    # Verify email matches
+    if invite.email != current_user.email:
+        raise HTTPException(status_code=403, detail="This invite was sent to a different email address")
+
     # Check not already a member
     existing = session.exec(
         select(WorkspaceMember).where(

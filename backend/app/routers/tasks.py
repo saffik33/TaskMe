@@ -250,10 +250,9 @@ def update_task(task_id: int, task_in: TaskUpdate, session: SessionDep, current_
 
 
 @router.delete("/all")
-def delete_all_tasks(session: SessionDep, current_user: CurrentUserDep):
-    # Delete all tasks for the current user across their workspaces
-    # (frontend sends this without workspace_id for backward compat)
-    tasks = session.exec(select(Task).where(Task.user_id == current_user.id)).all()
+def delete_all_tasks(session: SessionDep, current_user: CurrentUserDep, workspace_id: int = Query(...)):
+    require_editor(workspace_id, session, current_user)
+    tasks = session.exec(select(Task).where(Task.workspace_id == workspace_id)).all()
     for task in tasks:
         session.delete(task)
     session.commit()

@@ -12,7 +12,7 @@ export const updateTask = (id, data) => client.patch(`/tasks/${id}`, data)
 
 export const deleteTask = (id) => client.delete(`/tasks/${id}`)
 
-export const deleteAllTasks = () => client.delete('/tasks/all')
+export const deleteAllTasks = (params = {}) => client.delete('/tasks/all', { params })
 
 export const copyMoveTasks = (taskIds, destinationWorkspaceId, action) =>
   client.post('/tasks/copy-move', { task_ids: taskIds, destination_workspace_id: destinationWorkspaceId, action })

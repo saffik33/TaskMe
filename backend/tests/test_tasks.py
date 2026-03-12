@@ -123,7 +123,7 @@ def test_delete_all_tasks(client, user_a):
     client.post(f"/api/v1/tasks?workspace_id={ws_id}",
                 json={"task_name": "T2"}, headers=user_a["headers"])
 
-    resp = client.delete("/api/v1/tasks/all", headers=user_a["headers"])
+    resp = client.delete(f"/api/v1/tasks/all?workspace_id={ws_id}", headers=user_a["headers"])
     assert resp.status_code == 200
 
     list_resp = client.get(f"/api/v1/tasks?workspace_id={ws_id}", headers=user_a["headers"])

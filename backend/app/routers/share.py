@@ -66,15 +66,22 @@ class ShareEmailRequest(BaseModel):
     share_url: str
     recipient_email: str
     task_ids: list[int]
+    workspace_id: Optional[int] = None
 
 
 @router.post("/send-email")
 async def send_share_email(req: ShareEmailRequest, session: SessionDep, current_user: CurrentUserDep):
     from ..services.email_service import send_share_link_email
 
-    owned_tasks = session.exec(
-        select(Task).where(Task.id.in_(req.task_ids), Task.user_id == current_user.id)
-    ).all()
+    if req.workspace_id:
+        require_editor(req.workspace_id, session, current_user)
+        owned_tasks = session.exec(
+            select(Task).where(Task.id.in_(req.task_ids), Task.workspace_id == req.workspace_id)
+        ).all()
+    else:
+        owned_tasks = session.exec(
+            select(Task).where(Task.id.in_(req.task_ids), Task.user_id == current_user.id)
+        ).all()
     if not owned_tasks:
         raise HTTPException(status_code=403, detail="No valid tasks found")
 

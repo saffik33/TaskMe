@@ -138,6 +138,18 @@ def test_viewer_cannot_bulk_create(client, session, user_a, user_b):
     assert resp.status_code == 403
 
 
+def test_viewer_cannot_delete_all_tasks(client, session, user_a, user_b):
+    _add_member(session, user_a["workspace"], user_b["user"], "viewer")
+    resp = client.delete(f"/api/v1/tasks/all?workspace_id={user_a['workspace'].id}",
+                         headers=user_b["headers"])
+    assert resp.status_code == 403
+
+
+def test_delete_all_requires_workspace_id(client, user_a):
+    resp = client.delete("/api/v1/tasks/all", headers=user_a["headers"])
+    assert resp.status_code == 422
+
+
 def test_user_cannot_delete_other_workspace(client, user_a, user_b):
     resp = client.delete(f"/api/v1/workspaces/{user_b['workspace'].id}",
                          headers=user_a["headers"])

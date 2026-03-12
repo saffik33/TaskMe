@@ -115,7 +115,7 @@ export function TaskProvider({ children }) {
     const previousTasks = tasks
     setTasks([])
     try {
-      await api.deleteAllTasks()
+      await api.deleteAllTasks({ workspace_id: activeWorkspace.id })
     } catch (err) {
       setTasks(previousTasks)
       throw err

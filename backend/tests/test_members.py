@@ -140,3 +140,19 @@ def test_expired_invite_token(client, session, user_a, user_b):
     resp = client.post("/api/v1/invites/expired-token/accept",
                        headers=user_b["headers"])
     assert resp.status_code == 410
+
+
+def test_cannot_accept_invite_for_different_email(client, session, user_a, user_c):
+    """User C (charlie@test.com) cannot accept invite sent to bob@test.com."""
+    invite = WorkspaceInvite(
+        workspace_id=user_a["workspace"].id,
+        email="bob@test.com", role="editor",
+        inviter_id=user_a["user"].id,
+        token="wrong-email-token",
+    )
+    session.add(invite)
+    session.commit()
+    resp = client.post("/api/v1/invites/wrong-email-token/accept",
+                       headers=user_c["headers"])
+    assert resp.status_code == 403
+    assert "different email" in resp.json()["detail"].lower()
