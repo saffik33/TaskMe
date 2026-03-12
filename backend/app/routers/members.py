@@ -117,6 +117,7 @@ async def invite_member(workspace_id: int, req: InviteRequest, session: SessionD
                 current_user.username, ws_name, req.role,
             )
         except Exception as e:
+            print(f"ERROR: Failed to send workspace added email to {existing_user.email}: {e}")
             logger.error("Failed to send workspace added email to %s: %s", existing_user.email, str(e))
     else:
         # Check for existing invite
@@ -148,6 +149,7 @@ async def invite_member(workspace_id: int, req: InviteRequest, session: SessionD
                 req.email, current_user.username, ws_name, req.role, invite_url,
             )
         except Exception as e:
+            print(f"ERROR: Failed to send invite email to {req.email}: {e}")
             logger.error("Failed to send invite email to %s: %s", req.email, str(e))
 
     # Return same response regardless (email enumeration prevention)
