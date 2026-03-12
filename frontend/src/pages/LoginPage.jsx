@@ -23,9 +23,11 @@ export default function LoginPage() {
 
   // Handle OAuth token redirect
   useEffect(() => {
-    const token = searchParams.get('token')
-    if (token) {
+    const hash = window.location.hash
+    if (hash.startsWith('#token=')) {
+      const token = hash.slice('#token='.length)
       sessionStorage.setItem('token', token)
+      window.location.hash = ''
       navigate('/', { replace: true })
       return
     }

@@ -293,7 +293,7 @@ def google_callback(code: str, session: SessionDep, state: str = None):
     token = create_access_token(data={"sub": user.username, "user_id": user.id})
 
     # Redirect to frontend with token
-    return RedirectResponse(url=f"{frontend_url}/login?token={token}")
+    return RedirectResponse(url=f"{frontend_url}/login#token={token}")
 
 
 # --- Microsoft OAuth ---
@@ -415,4 +415,4 @@ def microsoft_callback(code: str, session: SessionDep, state: str = None):
     token = create_access_token(data={"sub": user.username, "user_id": user.id})
 
     # Redirect to frontend with token
-    return RedirectResponse(url=f"{frontend_url}/login?token={token}")
+    return RedirectResponse(url=f"{frontend_url}/login#token={token}")
