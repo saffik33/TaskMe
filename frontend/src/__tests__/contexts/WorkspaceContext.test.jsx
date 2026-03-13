@@ -208,4 +208,34 @@ describe('WorkspaceContext', () => {
       expect.objectContaining({ icon: '🔔' }),
     )
   })
+
+  it('shows toast notification when removed from workspace on poll', async () => {
+    let pollFn
+    function PollConsumer() {
+      const ctx = useWorkspaces()
+      pollFn = ctx.poll
+      if (ctx.loading) return <div>Loading...</div>
+      return <div data-testid="count">{ctx.workspaces.length}</div>
+    }
+
+    fetchWorkspaces.mockResolvedValue({
+      data: [
+        { id: 1, name: 'WS1', role: 'owner' },
+        { id: 2, name: 'Project X', role: 'editor' },
+      ],
+    })
+    render(<WorkspaceProvider><PollConsumer /></WorkspaceProvider>)
+    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('2'))
+    toast.mockClear()
+
+    // Project X disappears — user was removed
+    fetchWorkspaces.mockResolvedValue({
+      data: [{ id: 1, name: 'WS1', role: 'owner' }],
+    })
+    await act(async () => { await pollFn() })
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringContaining('removed from "Project X"'),
+      expect.objectContaining({ icon: '🔔', duration: 120000 }),
+    )
+  })
 })

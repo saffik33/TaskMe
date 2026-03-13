@@ -65,10 +65,16 @@ export function WorkspaceProvider({ children }) {
       for (const ws of res.data) {
         const old = prev.get(ws.id)
         if (!old) {
-          toast(`You were added to "${ws.name}" as ${ws.role}`, { icon: '🔔' })
+          toast(`You were added to "${ws.name}" as ${ws.role}`, { icon: '🔔', duration: 120000 })
           changed = true
         } else if (old.role !== ws.role) {
-          toast(`Your role in "${ws.name}" changed to ${ws.role}`, { icon: '🔔' })
+          toast(`Your role in "${ws.name}" changed to ${ws.role}`, { icon: '🔔', duration: 120000 })
+          changed = true
+        }
+      }
+      for (const [id, old] of prev) {
+        if (!res.data.find(ws => ws.id === id)) {
+          toast(`You were removed from "${old.name}"`, { icon: '🔔', duration: 120000 })
           changed = true
         }
       }
