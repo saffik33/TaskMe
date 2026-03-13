@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import toast from 'react-hot-toast'
 import {
   fetchWorkspaces,
   fetchMembers as apiFetchMembers,
@@ -19,9 +20,28 @@ export function WorkspaceProvider({ children }) {
   const [activeWorkspace, setActiveWorkspace] = useState(null)
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
+  const prevWorkspacesRef = useRef(null)
 
   // Derive current user's role from activeWorkspace response (includes role field)
   const currentUserRole = activeWorkspace?.role || null
+
+  const checkForChanges = useCallback((newWorkspaces) => {
+    if (prevWorkspacesRef.current === null) {
+      // First load — populate ref, no toasts
+      prevWorkspacesRef.current = new Map(newWorkspaces.map((w) => [w.id, { name: w.name, role: w.role }]))
+      return
+    }
+    const prev = prevWorkspacesRef.current
+    for (const ws of newWorkspaces) {
+      const old = prev.get(ws.id)
+      if (!old) {
+        toast(`You were added to "${ws.name}" as ${ws.role}`, { icon: '🔔' })
+      } else if (old.role !== ws.role) {
+        toast(`Your role in "${ws.name}" changed to ${ws.role}`, { icon: '🔔' })
+      }
+    }
+    prevWorkspacesRef.current = new Map(newWorkspaces.map((w) => [w.id, { name: w.name, role: w.role }]))
+  }, [])
 
   const loadMembers = useCallback(async (wsId) => {
     if (!wsId) return
@@ -36,6 +56,7 @@ export function WorkspaceProvider({ children }) {
   const loadWorkspaces = useCallback(async () => {
     try {
       const res = await fetchWorkspaces()
+      checkForChanges(res.data)
       setWorkspaces(res.data)
       const savedId = sessionStorage.getItem('activeWorkspaceId')
       const saved = res.data.find((w) => w.id === Number(savedId))
@@ -47,11 +68,20 @@ export function WorkspaceProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [loadMembers])
+  }, [loadMembers, checkForChanges])
 
   useEffect(() => {
     loadWorkspaces()
   }, [loadWorkspaces])
+
+  // Poll for workspace changes every 30 seconds
+  const loadWorkspacesRef = useRef(loadWorkspaces)
+  loadWorkspacesRef.current = loadWorkspaces
+  useEffect(() => {
+    if (!user) return
+    const interval = setInterval(() => loadWorkspacesRef.current(), 30000)
+    return () => clearInterval(interval)
+  }, [user])
 
   const switchWorkspace = useCallback((workspace) => {
     setActiveWorkspace(workspace)

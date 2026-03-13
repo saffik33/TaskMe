@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { WorkspaceProvider, useWorkspaces } from '../../context/WorkspaceContext'
+import toast from 'react-hot-toast'
+
+vi.mock('react-hot-toast', () => ({ default: vi.fn() }))
 
 vi.mock('../../api/workspaces', () => ({
   fetchWorkspaces: vi.fn(),
@@ -147,5 +150,63 @@ describe('WorkspaceContext', () => {
       expect(screen.getByTestId('count').textContent).toBe('1')
       expect(screen.getByTestId('active').textContent).toBe('WS2')
     })
+  })
+
+  it('shows toast notification when a new workspace appears on reload', async () => {
+    let reloadFn
+    function ReloadConsumer() {
+      const ctx = useWorkspaces()
+      reloadFn = ctx.reload
+      if (ctx.loading) return <div>Loading...</div>
+      return <div data-testid="count">{ctx.workspaces.length}</div>
+    }
+
+    fetchWorkspaces.mockResolvedValue({
+      data: [{ id: 1, name: 'WS1', role: 'owner' }],
+    })
+    render(<WorkspaceProvider><ReloadConsumer /></WorkspaceProvider>)
+    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('1'))
+    expect(toast).not.toHaveBeenCalled()
+
+    // Simulate new workspace appearing
+    fetchWorkspaces.mockResolvedValue({
+      data: [
+        { id: 1, name: 'WS1', role: 'owner' },
+        { id: 2, name: 'Project X', role: 'editor' },
+      ],
+    })
+    await act(async () => { await reloadFn() })
+    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('2'))
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringContaining('Project X'),
+      expect.objectContaining({ icon: '🔔' }),
+    )
+  })
+
+  it('shows toast notification when role changes in existing workspace', async () => {
+    let reloadFn
+    function ReloadConsumer() {
+      const ctx = useWorkspaces()
+      reloadFn = ctx.reload
+      if (ctx.loading) return <div>Loading...</div>
+      return <div data-testid="count">{ctx.workspaces.length}</div>
+    }
+
+    fetchWorkspaces.mockResolvedValue({
+      data: [{ id: 1, name: 'WS1', role: 'editor' }],
+    })
+    render(<WorkspaceProvider><ReloadConsumer /></WorkspaceProvider>)
+    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('1'))
+    toast.mockClear()
+
+    // Role changes from editor to viewer
+    fetchWorkspaces.mockResolvedValue({
+      data: [{ id: 1, name: 'WS1', role: 'viewer' }],
+    })
+    await act(async () => { await reloadFn() })
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringContaining('changed to viewer'),
+      expect.objectContaining({ icon: '🔔' }),
+    )
   })
 })
