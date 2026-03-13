@@ -264,4 +264,31 @@ describe('TaskContext — rollback & bulk operations', () => {
     await act(async () => { screen.getByText('AddBulk').click() })
     expect(tasksApi.createBulkTasks).toHaveBeenCalled()
   })
+
+  it('pollTasks updates state when data changes', async () => {
+    vi.useFakeTimers()
+    try {
+      // Initial load
+      tasksApi.fetchTasks.mockResolvedValue({
+        data: [{ id: 1, task_name: 'Original', updated_at: '2026-01-01T00:00:00Z', custom_fields: null }],
+      })
+      renderWithProviders(<TaskProvider><TestConsumer /></TaskProvider>)
+      await vi.waitFor(() => expect(screen.getByTestId('count').textContent).toBe('1'))
+      expect(screen.getByTestId('task-1').textContent).toBe('Original')
+
+      // Simulate another user editing the task — next fetch returns updated data
+      tasksApi.fetchTasks.mockResolvedValue({
+        data: [{ id: 1, task_name: 'Updated by Bob', updated_at: '2026-01-01T00:01:00Z', custom_fields: null }],
+      })
+
+      // Advance timer to trigger poll (60s)
+      await act(async () => { vi.advanceTimersByTime(60000) })
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('task-1').textContent).toBe('Updated by Bob')
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

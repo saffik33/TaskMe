@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import * as api from '../api/tasks'
 import { useWorkspaces } from './WorkspaceContext'
 
@@ -13,6 +13,7 @@ export function TaskProvider({ children }) {
   const { activeWorkspace } = useWorkspaces()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(false)
+  const prevTasksHashRef = useRef(null)
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -43,7 +44,9 @@ export function TaskProvider({ children }) {
       params.order = filters.order
 
       const res = await api.fetchTasks(params)
-      setTasks(res.data.map(normalizeTask))
+      const normalized = res.data.map(normalizeTask)
+      prevTasksHashRef.current = JSON.stringify(res.data.map((t) => ({ id: t.id, updated_at: t.updated_at })))
+      setTasks(normalized)
     } catch (err) {
       console.error('Failed to load tasks:', err)
     } finally {
@@ -54,6 +57,43 @@ export function TaskProvider({ children }) {
   useEffect(() => {
     loadTasks()
   }, [loadTasks])
+
+  // Lightweight poll — only updates tasks if data actually changed
+  const buildParams = useCallback(() => {
+    if (!activeWorkspace) return null
+    const params = { workspace_id: activeWorkspace.id }
+    if (filters.search) params.search = filters.search
+    if (filters.status) params.status = filters.status
+    if (filters.priority) params.priority = filters.priority
+    if (filters.owner) params.owner = filters.owner
+    if (filters.statuses) params.statuses = filters.statuses
+    if (filters.priorities) params.priorities = filters.priorities
+    if (filters.date_from) params.date_from = filters.date_from
+    if (filters.date_to) params.date_to = filters.date_to
+    params.sort_by = filters.sort_by
+    params.order = filters.order
+    return params
+  }, [activeWorkspace, filters])
+
+  const pollTasks = useCallback(async () => {
+    const params = buildParams()
+    if (!params) return
+    try {
+      const res = await api.fetchTasks(params)
+      const hash = JSON.stringify(res.data.map((t) => ({ id: t.id, updated_at: t.updated_at })))
+      if (hash === prevTasksHashRef.current) return
+      prevTasksHashRef.current = hash
+      setTasks(res.data.map(normalizeTask))
+    } catch { /* silent */ }
+  }, [buildParams])
+
+  const pollTasksRef = useRef(pollTasks)
+  pollTasksRef.current = pollTasks
+  useEffect(() => {
+    if (!activeWorkspace) return
+    const interval = setInterval(() => pollTasksRef.current(), 60000)
+    return () => clearInterval(interval)
+  }, [activeWorkspace])
 
   const addTask = async (data) => {
     const params = { workspace_id: activeWorkspace.id }

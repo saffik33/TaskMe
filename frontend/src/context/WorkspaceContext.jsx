@@ -39,9 +39,7 @@ export function WorkspaceProvider({ children }) {
     try {
       const res = await fetchWorkspaces()
       setWorkspaces(res.data)
-      if (prevWorkspacesRef.current === null) {
-        prevWorkspacesRef.current = new Map(res.data.map((w) => [w.id, { name: w.name, role: w.role }]))
-      }
+      prevWorkspacesRef.current = new Map(res.data.map((w) => [w.id, { name: w.name, role: w.role }]))
       const savedId = sessionStorage.getItem('activeWorkspaceId')
       const saved = res.data.find((w) => w.id === Number(savedId))
       const active = saved || res.data[0] || null
