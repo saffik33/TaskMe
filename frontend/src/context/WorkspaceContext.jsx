@@ -25,24 +25,6 @@ export function WorkspaceProvider({ children }) {
   // Derive current user's role from activeWorkspace response (includes role field)
   const currentUserRole = activeWorkspace?.role || null
 
-  const checkForChanges = useCallback((newWorkspaces) => {
-    if (prevWorkspacesRef.current === null) {
-      // First load — populate ref, no toasts
-      prevWorkspacesRef.current = new Map(newWorkspaces.map((w) => [w.id, { name: w.name, role: w.role }]))
-      return
-    }
-    const prev = prevWorkspacesRef.current
-    for (const ws of newWorkspaces) {
-      const old = prev.get(ws.id)
-      if (!old) {
-        toast(`You were added to "${ws.name}" as ${ws.role}`, { icon: '🔔' })
-      } else if (old.role !== ws.role) {
-        toast(`Your role in "${ws.name}" changed to ${ws.role}`, { icon: '🔔' })
-      }
-    }
-    prevWorkspacesRef.current = new Map(newWorkspaces.map((w) => [w.id, { name: w.name, role: w.role }]))
-  }, [])
-
   const loadMembers = useCallback(async (wsId) => {
     if (!wsId) return
     try {
@@ -56,8 +38,10 @@ export function WorkspaceProvider({ children }) {
   const loadWorkspaces = useCallback(async () => {
     try {
       const res = await fetchWorkspaces()
-      checkForChanges(res.data)
       setWorkspaces(res.data)
+      if (prevWorkspacesRef.current === null) {
+        prevWorkspacesRef.current = new Map(res.data.map((w) => [w.id, { name: w.name, role: w.role }]))
+      }
       const savedId = sessionStorage.getItem('activeWorkspaceId')
       const saved = res.data.find((w) => w.id === Number(savedId))
       const active = saved || res.data[0] || null
@@ -68,18 +52,43 @@ export function WorkspaceProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [loadMembers, checkForChanges])
+  }, [loadMembers])
+
+  // Lightweight poll — only fetches workspaces, compares, fires toasts if changed
+  const loadWorkspacesRef = useRef(loadWorkspaces)
+  loadWorkspacesRef.current = loadWorkspaces
+  const pollForChanges = useCallback(async () => {
+    try {
+      const res = await fetchWorkspaces()
+      if (prevWorkspacesRef.current === null) return
+      const prev = prevWorkspacesRef.current
+      let changed = false
+      if (res.data.length !== prev.size) changed = true
+      for (const ws of res.data) {
+        const old = prev.get(ws.id)
+        if (!old) {
+          toast(`You were added to "${ws.name}" as ${ws.role}`, { icon: '🔔' })
+          changed = true
+        } else if (old.role !== ws.role) {
+          toast(`Your role in "${ws.name}" changed to ${ws.role}`, { icon: '🔔' })
+          changed = true
+        }
+      }
+      prevWorkspacesRef.current = new Map(res.data.map((w) => [w.id, { name: w.name, role: w.role }]))
+      if (changed) loadWorkspacesRef.current()
+    } catch { /* silent — poll failure is not user-facing */ }
+  }, [])
 
   useEffect(() => {
     loadWorkspaces()
   }, [loadWorkspaces])
 
-  // Poll for workspace changes every 30 seconds
-  const loadWorkspacesRef = useRef(loadWorkspaces)
-  loadWorkspacesRef.current = loadWorkspaces
+  // Poll for workspace changes every 2 minutes
+  const pollRef = useRef(pollForChanges)
+  pollRef.current = pollForChanges
   useEffect(() => {
     if (!user) return
-    const interval = setInterval(() => loadWorkspacesRef.current(), 30000)
+    const interval = setInterval(() => pollRef.current(), 120000)
     return () => clearInterval(interval)
   }, [user])
 
@@ -152,6 +161,7 @@ export function WorkspaceProvider({ children }) {
         changeMemberRole,
         loadMembers,
         reload: loadWorkspaces,
+        poll: pollForChanges,
       }}
     >
       {children}

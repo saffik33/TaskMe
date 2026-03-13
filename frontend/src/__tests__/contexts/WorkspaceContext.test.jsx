@@ -152,11 +152,11 @@ describe('WorkspaceContext', () => {
     })
   })
 
-  it('shows toast notification when a new workspace appears on reload', async () => {
-    let reloadFn
-    function ReloadConsumer() {
+  it('shows toast notification when a new workspace appears on poll', async () => {
+    let pollFn
+    function PollConsumer() {
       const ctx = useWorkspaces()
-      reloadFn = ctx.reload
+      pollFn = ctx.poll
       if (ctx.loading) return <div>Loading...</div>
       return <div data-testid="count">{ctx.workspaces.length}</div>
     }
@@ -164,30 +164,29 @@ describe('WorkspaceContext', () => {
     fetchWorkspaces.mockResolvedValue({
       data: [{ id: 1, name: 'WS1', role: 'owner' }],
     })
-    render(<WorkspaceProvider><ReloadConsumer /></WorkspaceProvider>)
+    render(<WorkspaceProvider><PollConsumer /></WorkspaceProvider>)
     await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('1'))
     expect(toast).not.toHaveBeenCalled()
 
-    // Simulate new workspace appearing
+    // Simulate new workspace appearing via lightweight poll
     fetchWorkspaces.mockResolvedValue({
       data: [
         { id: 1, name: 'WS1', role: 'owner' },
         { id: 2, name: 'Project X', role: 'editor' },
       ],
     })
-    await act(async () => { await reloadFn() })
-    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('2'))
+    await act(async () => { await pollFn() })
     expect(toast).toHaveBeenCalledWith(
       expect.stringContaining('Project X'),
       expect.objectContaining({ icon: '🔔' }),
     )
   })
 
-  it('shows toast notification when role changes in existing workspace', async () => {
-    let reloadFn
-    function ReloadConsumer() {
+  it('shows toast notification when role changes on poll', async () => {
+    let pollFn
+    function PollConsumer() {
       const ctx = useWorkspaces()
-      reloadFn = ctx.reload
+      pollFn = ctx.poll
       if (ctx.loading) return <div>Loading...</div>
       return <div data-testid="count">{ctx.workspaces.length}</div>
     }
@@ -195,7 +194,7 @@ describe('WorkspaceContext', () => {
     fetchWorkspaces.mockResolvedValue({
       data: [{ id: 1, name: 'WS1', role: 'editor' }],
     })
-    render(<WorkspaceProvider><ReloadConsumer /></WorkspaceProvider>)
+    render(<WorkspaceProvider><PollConsumer /></WorkspaceProvider>)
     await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('1'))
     toast.mockClear()
 
@@ -203,7 +202,7 @@ describe('WorkspaceContext', () => {
     fetchWorkspaces.mockResolvedValue({
       data: [{ id: 1, name: 'WS1', role: 'viewer' }],
     })
-    await act(async () => { await reloadFn() })
+    await act(async () => { await pollFn() })
     expect(toast).toHaveBeenCalledWith(
       expect.stringContaining('changed to viewer'),
       expect.objectContaining({ icon: '🔔' }),
