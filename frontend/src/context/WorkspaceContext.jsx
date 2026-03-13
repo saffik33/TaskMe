@@ -55,6 +55,10 @@ export function WorkspaceProvider({ children }) {
   // Lightweight poll — only fetches workspaces, compares, fires toasts if changed
   const loadWorkspacesRef = useRef(loadWorkspaces)
   loadWorkspacesRef.current = loadWorkspaces
+  const loadMembersRef = useRef(loadMembers)
+  loadMembersRef.current = loadMembers
+  const activeWorkspaceRef = useRef(activeWorkspace)
+  activeWorkspaceRef.current = activeWorkspace
   const pollForChanges = useCallback(async () => {
     try {
       const res = await fetchWorkspaces()
@@ -80,6 +84,7 @@ export function WorkspaceProvider({ children }) {
       }
       prevWorkspacesRef.current = new Map(res.data.map((w) => [w.id, { name: w.name, role: w.role }]))
       if (changed) loadWorkspacesRef.current()
+      else if (activeWorkspaceRef.current) loadMembersRef.current(activeWorkspaceRef.current.id)
     } catch { /* silent — poll failure is not user-facing */ }
   }, [])
 
@@ -139,8 +144,12 @@ export function WorkspaceProvider({ children }) {
   const removeMemberFromWorkspace = useCallback(async (userId) => {
     if (!activeWorkspace) return
     await apiRemove(activeWorkspace.id, userId)
-    await loadMembers(activeWorkspace.id)
-  }, [activeWorkspace, loadMembers])
+    if (userId === user?.id) {
+      await loadWorkspaces()
+    } else {
+      await loadMembers(activeWorkspace.id)
+    }
+  }, [activeWorkspace, loadMembers, loadWorkspaces, user])
 
   const changeMemberRole = useCallback(async (userId, role) => {
     if (!activeWorkspace) return

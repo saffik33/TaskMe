@@ -20,7 +20,7 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { id: 1, username: 'testuser', email: 'test@test.com' } }),
 }))
 
-import { fetchWorkspaces, fetchMembers, createWorkspace, updateWorkspace, deleteWorkspace } from '../../api/workspaces'
+import { fetchWorkspaces, fetchMembers, createWorkspace, updateWorkspace, deleteWorkspace, removeMember } from '../../api/workspaces'
 
 function TestConsumer() {
   const { workspaces, activeWorkspace, loading, switchWorkspace, addWorkspace, editWorkspace, removeWorkspace } = useWorkspaces()
@@ -237,5 +237,35 @@ describe('WorkspaceContext', () => {
       expect.stringContaining('removed from "Project X"'),
       expect.objectContaining({ icon: '🔔', duration: 120000 }),
     )
+  })
+
+  it('self-leave reloads workspaces instead of members', async () => {
+    let leaveFn
+    function LeaveConsumer() {
+      const ctx = useWorkspaces()
+      leaveFn = ctx.removeMember
+      if (ctx.loading) return <div>Loading...</div>
+      return <div data-testid="count">{ctx.workspaces.length}</div>
+    }
+
+    fetchWorkspaces.mockResolvedValue({
+      data: [
+        { id: 1, name: 'WS1', role: 'owner' },
+        { id: 2, name: 'WS2', role: 'editor' },
+      ],
+    })
+    fetchMembers.mockResolvedValue({ data: { members: [], pending_invites: [] } })
+    removeMember.mockResolvedValue({ data: { ok: true } })
+    render(<WorkspaceProvider><LeaveConsumer /></WorkspaceProvider>)
+    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('2'))
+
+    // After leave, fetchWorkspaces returns only WS1
+    fetchWorkspaces.mockResolvedValue({
+      data: [{ id: 1, name: 'WS1', role: 'owner' }],
+    })
+    await act(async () => { await leaveFn(1) }) // userId=1 matches mock user
+    await waitFor(() => {
+      expect(screen.getByTestId('count').textContent).toBe('1')
+    })
   })
 })
