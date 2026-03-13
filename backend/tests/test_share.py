@@ -112,3 +112,28 @@ def test_export_with_ids_filter(client, user_a):
 
     resp = client.get(f"/api/v1/export/excel?workspace_id={ws_id}&ids={t1['id']},{t2['id']}", headers=user_a["headers"])
     assert resp.status_code == 200
+
+
+def test_send_share_email_success(client, user_a):
+    from unittest.mock import AsyncMock, patch
+
+    ws_id = user_a["workspace"].id
+    task = client.post(f"/api/v1/tasks?workspace_id={ws_id}",
+                       json={"task_name": "Email Task"}, headers=user_a["headers"]).json()
+
+    with patch("app.services.email_service.send_share_link_email", new_callable=AsyncMock) as mock_send:
+        resp = client.post("/api/v1/share/send-email",
+                           json={"share_url": "https://example.com/shared/abc",
+                                 "recipient_email": "friend@test.com",
+                                 "task_ids": [task["id"]],
+                                 "workspace_id": ws_id},
+                           headers=user_a["headers"])
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "Email sent successfully"
+    mock_send.assert_called_once()
+
+
+def test_non_member_cannot_export(client, user_a, user_b):
+    ws_id = user_a["workspace"].id
+    resp = client.get(f"/api/v1/export/excel?workspace_id={ws_id}", headers=user_b["headers"])
+    assert resp.status_code == 404

@@ -50,3 +50,36 @@ def test_move_to_unauthorized_workspace(client, user_a, user_b):
                        json={"task_ids": [t1["id"]], "destination_workspace_id": user_b["workspace"].id, "action": "move"},
                        headers=user_a["headers"])
     assert resp.status_code in (403, 404)  # 404 = IDOR-safe (don't reveal workspace existence)
+
+
+def test_copy_preserves_originals(client, session, user_a):
+    ws1 = user_a["workspace"]
+    ws2 = _create_workspace(session, user_a["user"], "Copy Dest 2")
+
+    t1 = client.post(f"/api/v1/tasks?workspace_id={ws1.id}",
+                     json={"task_name": "Original"}, headers=user_a["headers"]).json()
+
+    resp = client.post("/api/v1/tasks/copy-move",
+                       json={"task_ids": [t1["id"]], "destination_workspace_id": ws2.id, "action": "copy"},
+                       headers=user_a["headers"])
+    assert resp.status_code == 200
+    assert resp.json()["action"] == "copy"
+
+    # Original still exists in source
+    original = client.get(f"/api/v1/tasks/{t1['id']}", headers=user_a["headers"])
+    assert original.status_code == 200
+    assert original.json()["task_name"] == "Original"
+
+
+def test_invalid_copy_move_action(client, session, user_a):
+    ws1 = user_a["workspace"]
+    ws2 = _create_workspace(session, user_a["user"], "Bad Action Dest")
+
+    t1 = client.post(f"/api/v1/tasks?workspace_id={ws1.id}",
+                     json={"task_name": "No Delete"}, headers=user_a["headers"]).json()
+
+    resp = client.post("/api/v1/tasks/copy-move",
+                       json={"task_ids": [t1["id"]], "destination_workspace_id": ws2.id, "action": "delete"},
+                       headers=user_a["headers"])
+    assert resp.status_code == 400
+    assert "copy" in resp.json()["detail"].lower() or "move" in resp.json()["detail"].lower()

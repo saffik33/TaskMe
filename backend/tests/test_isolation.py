@@ -154,3 +154,17 @@ def test_user_cannot_delete_other_workspace(client, user_a, user_b):
     resp = client.delete(f"/api/v1/workspaces/{user_b['workspace'].id}",
                          headers=user_a["headers"])
     assert resp.status_code in (403, 404)
+
+
+def test_editor_cannot_delete_workspace(client, session, user_a, user_b):
+    _add_member(session, user_a["workspace"], user_b["user"], role="editor")
+    resp = client.delete(f"/api/v1/workspaces/{user_a['workspace'].id}",
+                         headers=user_b["headers"])
+    assert resp.status_code == 403
+
+
+def test_non_member_cannot_export_workspace(client, user_a, user_b):
+    ws_id = user_a["workspace"].id
+    resp = client.get(f"/api/v1/export/excel?workspace_id={ws_id}",
+                      headers=user_b["headers"])
+    assert resp.status_code == 404

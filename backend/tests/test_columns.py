@@ -176,3 +176,25 @@ def test_update_column_not_owned(client, user_a, user_b):
                         json={"display_name": "Hacked"},
                         headers=user_a["headers"])
     assert resp.status_code == 404
+
+
+def test_viewer_can_list_columns(client, session, user_a, user_b):
+    from tests.conftest import _add_member
+    _add_member(session, user_a["workspace"], user_b["user"], role="viewer")
+    ws_id = user_a["workspace"].id
+    resp = client.get(f"/api/v1/columns?workspace_id={ws_id}", headers=user_b["headers"])
+    assert resp.status_code == 200
+    assert len(resp.json()) >= 8  # 8 core columns
+
+
+def test_reorder_columns_with_workspace_id(client, user_a):
+    ws_id = user_a["workspace"].id
+    cols = client.get(f"/api/v1/columns?workspace_id={ws_id}", headers=user_a["headers"]).json()
+    # Swap first two positions
+    items = [{"id": cols[0]["id"], "position": 1}, {"id": cols[1]["id"], "position": 0}]
+    resp = client.patch(f"/api/v1/columns/reorder?workspace_id={ws_id}",
+                        json=items, headers=user_a["headers"])
+    assert resp.status_code == 200
+    result = resp.json()
+    assert result[0]["id"] == cols[1]["id"]
+    assert result[1]["id"] == cols[0]["id"]
