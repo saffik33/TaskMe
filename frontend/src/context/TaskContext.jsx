@@ -93,7 +93,7 @@ export function TaskProvider({ children }) {
     if (!activeWorkspace) return
     const interval = setInterval(() => pollTasksRef.current(), 60000)
     return () => clearInterval(interval)
-  }, [activeWorkspace])
+  }, [activeWorkspace?.id])
 
   const addTask = async (data) => {
     const params = { workspace_id: activeWorkspace.id }
