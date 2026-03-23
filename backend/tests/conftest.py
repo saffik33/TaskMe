@@ -14,6 +14,7 @@ from app.models.workspace import Workspace, WorkspaceMember
 
 # Import all models so metadata is populated
 from app.models import task, column_config, share  # noqa: F401
+from app.models import agent_binding  # noqa: F401
 
 test_engine = create_engine(
     "sqlite://",

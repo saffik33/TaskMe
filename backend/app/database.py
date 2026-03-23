@@ -333,6 +333,47 @@ def migrate_add_rbac():
             session.commit()
 
 
+def migrate_add_agent_columns():
+    """Add agent binding columns to task table and create agentapikey table."""
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+
+    if "task" in existing_tables:
+        columns = [col["name"] for col in inspector.get_columns("task")]
+        with Session(engine) as session:
+            if "agent_mode" not in columns:
+                session.exec(text("ALTER TABLE task ADD COLUMN agent_mode VARCHAR(20)"))
+            if "agent_id" not in columns:
+                session.exec(text("ALTER TABLE task ADD COLUMN agent_id VARCHAR(255)"))
+            if "agent_session_id" not in columns:
+                session.exec(text("ALTER TABLE task ADD COLUMN agent_session_id VARCHAR(255)"))
+            if "agent_status" not in columns:
+                session.exec(text("ALTER TABLE task ADD COLUMN agent_status VARCHAR(20)"))
+            if "parent_task_id" not in columns:
+                session.exec(text(
+                    "ALTER TABLE task ADD COLUMN parent_task_id INTEGER REFERENCES task(id)"
+                ))
+            session.commit()
+
+    # Create agentapikey table if missing
+    if "agentapikey" not in existing_tables:
+        from .models.agent_binding import AgentApiKey  # noqa: F401
+        SQLModel.metadata.create_all(engine, tables=[AgentApiKey.__table__])
+
+
+def migrate_add_nudge_columns():
+    """Add follow-up nudge columns to task table."""
+    inspector = inspect(engine)
+    if "task" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("task")]
+        with Session(engine) as session:
+            if "agent_nudge" not in columns:
+                session.exec(text("ALTER TABLE task ADD COLUMN agent_nudge TEXT"))
+            if "agent_nudge_at" not in columns:
+                session.exec(text("ALTER TABLE task ADD COLUMN agent_nudge_at TIMESTAMP"))
+            session.commit()
+
+
 def get_session():
     with Session(engine) as session:
         yield session

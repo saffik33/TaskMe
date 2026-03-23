@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Mail, User, Calendar } from 'lucide-react'
+import { Pencil, Trash2, Mail, User, Calendar, Bot } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import StatusBadge from './StatusBadge'
@@ -31,9 +31,14 @@ export default function TaskCard({ task, onEdit, onDelete, onNotify }) {
       }`}
     >
       <div className="flex items-start justify-between mb-2">
-        <h4 className="text-sm font-semibold text-gray-900 leading-tight flex-1 mr-2">
-          {task.task_name}
-        </h4>
+        <div className="flex items-center gap-1.5 flex-1 mr-2">
+          <h4 className="text-sm font-semibold text-gray-900 leading-tight">
+            {task.task_name}
+          </h4>
+          {task.agent_id && (
+            <Bot className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" title={`Agent: ${task.agent_id}`} />
+          )}
+        </div>
         <PriorityBadge priority={task.priority} />
       </div>
 

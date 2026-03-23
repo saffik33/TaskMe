@@ -5,7 +5,7 @@ import {
   flexRender,
 } from '@tanstack/react-table'
 import { useMemo, useState } from 'react'
-import { Pencil, Trash2, Mail, ArrowUpDown } from 'lucide-react'
+import { Pencil, Trash2, Mail, ArrowUpDown, Bot, Sparkles, AlertTriangle } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import PriorityBadge from './PriorityBadge'
 import InlineSelect from './InlineSelect'
@@ -25,7 +25,15 @@ const CORE_SIZES = {
   priority: { size: 120, minSize: 90, maxSize: 180 },
 }
 
-export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onNotify, onFieldChange, rowSelection, onRowSelectionChange }) {
+const AGENT_STATUS_COLORS = {
+  idle: 'text-green-500',
+  executing: 'text-blue-500 animate-pulse',
+  waiting_approval: 'text-yellow-500',
+  completed: 'text-gray-400',
+  failed: 'text-red-500',
+}
+
+export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onNotify, onFieldChange, onOpenAgent, onBreakdown, rowSelection, onRowSelectionChange }) {
   const [sorting, setSorting] = useState([])
   const { visibleColumns } = useColumns()
 
@@ -237,6 +245,47 @@ export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onN
       })
     })
 
+    // Agent status column
+    if (onOpenAgent) {
+      cols.push({
+        id: 'agent',
+        header: '',
+        size: 40,
+        minSize: 36,
+        maxSize: 50,
+        enableResizing: false,
+        cell: ({ row }) => {
+          const task = row.original
+          if (!task.agent_id && !task.agent_nudge) return null
+          const colorClass = AGENT_STATUS_COLORS[task.agent_status] || 'text-gray-300'
+          return (
+            <div className="flex items-center gap-0.5">
+              {task.agent_id && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenAgent(task)
+                  }}
+                  className={`p-1 rounded hover:bg-purple-50 transition-colors ${colorClass}`}
+                  title={`Agent: ${task.agent_id} (${task.agent_status || 'idle'})`}
+                >
+                  <Bot className="w-4 h-4" />
+                </button>
+              )}
+              {task.agent_nudge && (
+                <span
+                  className="p-1 text-amber-500 cursor-help"
+                  title={task.agent_nudge}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </span>
+              )}
+            </div>
+          )
+        },
+      })
+    }
+
     // Append the actions column only for editors/owners
     if (!canEdit) return cols
     cols.push({
@@ -278,6 +327,18 @@ export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onN
               title="Send notification"
             >
               <Mail className="w-4 h-4" />
+            </button>
+          )}
+          {onBreakdown && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onBreakdown(row.original)
+              }}
+              className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+              title="Break down with AI"
+            >
+              <Sparkles className="w-4 h-4" />
             </button>
           )}
         </div>

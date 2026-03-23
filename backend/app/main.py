@@ -8,8 +8,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from .config import settings, check_jwt_secret
-from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, migrate_add_email_verification, migrate_add_oauth, migrate_add_workspaces, migrate_backfill_workspaces, seed_core_columns, migrate_fix_column_constraint, migrate_add_rbac
-from .routers import auth, columns, export, members, parse, share, tasks, workspaces
+from .database import check_database_url, create_db_and_tables, migrate_custom_fields_column, migrate_add_user_support, migrate_assign_orphan_data, migrate_add_email_verification, migrate_add_oauth, migrate_add_workspaces, migrate_backfill_workspaces, seed_core_columns, migrate_fix_column_constraint, migrate_add_rbac, migrate_add_agent_columns, migrate_add_nudge_columns
+from .routers import auth, columns, export, members, parse, share, tasks, workspaces, agents, agent_ws, agent_admin
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -29,10 +29,17 @@ async def lifespan(app: FastAPI):
     seed_core_columns()
     migrate_fix_column_constraint()
     migrate_add_rbac()
+    migrate_add_agent_columns()
+    migrate_add_nudge_columns()
     if not settings.SMTP_USER:
         import logging
         logging.getLogger(__name__).warning("SMTP_USER not set — email verification will fail")
+    # Start follow-up scanner background task
+    import asyncio
+    from .services.followup_scanner import run_scanner_loop
+    scanner_task = asyncio.create_task(run_scanner_loop())
     yield
+    scanner_task.cancel()
 
 
 docs_enabled = not os.getenv("RAILWAY_ENVIRONMENT")
@@ -89,6 +96,9 @@ app.include_router(export.router, prefix="/api/v1")
 app.include_router(share.router, prefix="/api/v1")
 app.include_router(columns.router, prefix="/api/v1")
 app.include_router(members.router, prefix="/api/v1")
+app.include_router(agents.router, prefix="/api/v1")
+app.include_router(agent_ws.router, prefix="/api/v1")
+app.include_router(agent_admin.router, prefix="/api/v1")
 
 
 @app.get("/")

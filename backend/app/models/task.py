@@ -42,6 +42,15 @@ class Task(TaskBase, table=True):
     workspace_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("workspace.id"), nullable=True, index=True))
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
+    # Agent binding columns
+    agent_mode: Optional[str] = Field(default=None, max_length=20)
+    agent_id: Optional[str] = Field(default=None, max_length=255)
+    agent_session_id: Optional[str] = Field(default=None, max_length=255)
+    agent_status: Optional[str] = Field(default=None, max_length=20)
+    parent_task_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("task.id"), nullable=True))
+    # Follow-up nudge columns
+    agent_nudge: Optional[str] = Field(default=None, sa_column=Column(Text))
+    agent_nudge_at: Optional[datetime] = None
 
 
 class TaskCreate(TaskBase):
@@ -58,9 +67,18 @@ class TaskUpdate(SQLModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     custom_fields: Optional[str] = None
+    agent_mode: Optional[str] = None
+    agent_status: Optional[str] = None
 
 
 class TaskPublic(TaskBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    agent_mode: Optional[str] = None
+    agent_id: Optional[str] = None
+    agent_session_id: Optional[str] = None
+    agent_status: Optional[str] = None
+    parent_task_id: Optional[int] = None
+    agent_nudge: Optional[str] = None
+    agent_nudge_at: Optional[datetime] = None

@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     MICROSOFT_CLIENT_ID: str = ""
     MICROSOFT_CLIENT_SECRET: str = ""
+    AGENTS_SERVICE_URL: str = "http://localhost:8001"
+    AGENTS_API_KEY: str = ""
 
     model_config = {"env_file": str(ENV_FILE)}
 

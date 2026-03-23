@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../utils/constants'
 import { toInputDate } from '../utils/dateHelpers'
 import { useColumns } from '../context/ColumnContext'
+import AgentModeSelector from './AgentModeSelector'
 
 const emptyTask = {
   task_name: '',
@@ -15,9 +16,11 @@ const emptyTask = {
   priority: 'Medium',
 }
 
-export default function TaskModal({ open, task, onSave, onClose }) {
+export default function TaskModal({ open, task, onSave, onClose, onAgentBind }) {
   const [form, setForm] = useState(emptyTask)
   const [customForm, setCustomForm] = useState({})
+  const [agentMode, setAgentMode] = useState('manual')
+  const [agentId, setAgentId] = useState('task-copilot')
   const { customVisibleColumns } = useColumns()
   const isEdit = !!task?.id
 
@@ -67,7 +70,7 @@ export default function TaskModal({ open, task, onSave, onClose }) {
       data.custom_fields = JSON.stringify(cleaned)
     }
 
-    onSave(data)
+    onSave(data, agentMode !== 'manual' ? { agentId, mode: agentMode } : null)
   }
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -255,6 +258,27 @@ export default function TaskModal({ open, task, onSave, onClose }) {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Agent nudge — shown on edit when present */}
+          {isEdit && task?.agent_nudge && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-amber-700 text-xs font-medium mb-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                AI Nudge
+              </div>
+              <p className="text-sm text-amber-800">{task.agent_nudge}</p>
+            </div>
+          )}
+
+          {/* Agent mode — only for new tasks */}
+          {!isEdit && (
+            <AgentModeSelector
+              mode={agentMode}
+              agentId={agentId}
+              onModeChange={setAgentMode}
+              onAgentChange={setAgentId}
+            />
           )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

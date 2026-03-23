@@ -15,12 +15,16 @@ import CopyMoveDialog from '../components/CopyMoveDialog'
 import ColumnManager from '../components/ColumnManager'
 import WorkspaceSwitcher from '../components/WorkspaceSwitcher'
 import MemberList from '../components/MemberList'
+import AgentPanel from '../components/AgentPanel'
+import TaskBreakdown from '../components/TaskBreakdown'
+import { useAgent } from '../context/AgentContext'
 import { exportExcel, sendNotification } from '../api/tasks'
 
 export default function Dashboard() {
   const { tasks, loading, loadTasks, addTask, editTask, removeTask, removeBulkTasks } = useTasks()
   const { columns } = useColumns()
   const { activeWorkspace, currentUserRole } = useWorkspaces()
+  const { openPanel, bindAgentToTask } = useAgent()
   const canEdit = currentUserRole === 'owner' || currentUserRole === 'editor'
 
   const [view, setView] = useState('table')
@@ -34,6 +38,7 @@ export default function Dashboard() {
   const [deleteSelectedConfirm, setDeleteSelectedConfirm] = useState(false)
   const [columnManagerOpen, setColumnManagerOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [breakdownTask, setBreakdownTask] = useState(null)
 
   const handleOpenCreate = () => {
     setEditingTask(null)
@@ -45,14 +50,23 @@ export default function Dashboard() {
     setModalOpen(true)
   }
 
-  const handleSave = async (data) => {
+  const handleSave = async (data, agentConfig) => {
     try {
       if (editingTask?.id) {
         await editTask(editingTask.id, data)
         toast.success('Task updated')
       } else {
-        await addTask(data)
+        const newTask = await addTask(data)
         toast.success('Task created')
+        // Bind agent if selected
+        if (agentConfig && newTask?.id) {
+          try {
+            await bindAgentToTask(newTask.id, agentConfig.agentId, agentConfig.mode)
+            toast.success(`Agent "${agentConfig.agentId}" bound`)
+          } catch {
+            toast.error('Task created but agent binding failed')
+          }
+        }
       }
       setModalOpen(false)
       setEditingTask(null)
@@ -258,6 +272,8 @@ export default function Dashboard() {
           onDelete={setDeleteTask}
           onNotify={handleNotify}
           onFieldChange={handleFieldChange}
+          onOpenAgent={openPanel}
+          onBreakdown={canEdit ? setBreakdownTask : undefined}
           rowSelection={canEdit ? rowSelection : {}}
           onRowSelectionChange={canEdit ? setRowSelection : () => {}}
         />
@@ -325,6 +341,14 @@ export default function Dashboard() {
       <MemberList
         open={membersOpen}
         onClose={() => setMembersOpen(false)}
+      />
+
+      <AgentPanel />
+
+      <TaskBreakdown
+        task={breakdownTask}
+        open={!!breakdownTask}
+        onClose={() => setBreakdownTask(null)}
       />
     </div>
   )
