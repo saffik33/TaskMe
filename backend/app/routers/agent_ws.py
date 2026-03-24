@@ -21,6 +21,19 @@ router = APIRouter(tags=["agent-ws"])
 # Tools that the relay handles locally instead of forwarding to the frontend
 LOCAL_TOOLS = {"update_task", "create_subtask", "create_subtasks_batch", "list_workspace_members", "list_workspace_tasks"}
 
+# Map LLM priority strings to valid TaskPriority enum values
+_PRIORITY_MAP = {"low": "Low", "medium": "Medium", "high": "High", "critical": "Critical"}
+
+def _normalize_priority(val, fallback="Medium"):
+    """Normalize LLM priority output to valid TaskPriority value."""
+    if val is None:
+        return fallback
+    s = str(val).strip().lower()
+    # Handle "TaskPriority.HIGH" format
+    if "." in s:
+        s = s.split(".")[-1].lower()
+    return _PRIORITY_MAP.get(s, fallback)
+
 
 async def _get_user_and_task(token: str, task_id: int) -> tuple[int, Task]:
     """Validate JWT and load task in a thread (sync DB)."""
@@ -83,7 +96,7 @@ async def _execute_local_tool(task_id: int, tool_name: str, params: dict) -> dic
                 subtask = Task(
                     task_name=params.get("task_name", "Subtask"),
                     description=params.get("description"),
-                    priority=params.get("priority", task.priority),
+                    priority=_normalize_priority(params.get("priority"), task.priority),
                     due_date=params.get("due_date"),
                     parent_task_id=task_id,
                     workspace_id=task.workspace_id,
@@ -102,7 +115,7 @@ async def _execute_local_tool(task_id: int, tool_name: str, params: dict) -> dic
                     subtask = Task(
                         task_name=st.get("task_name", "Subtask"),
                         description=st.get("description"),
-                        priority=st.get("priority", task.priority),
+                        priority=_normalize_priority(st.get("priority"), task.priority),
                         due_date=st.get("due_date"),
                         parent_task_id=task_id,
                         workspace_id=task.workspace_id,

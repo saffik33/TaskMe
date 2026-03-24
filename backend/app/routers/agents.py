@@ -16,6 +16,17 @@ from ..dependencies import CurrentUserDep, get_workspace_member, require_editor
 from ..models.task import Task, TaskPublic
 from ..services.agent_bridge import get_agent_bridge
 
+# Map LLM priority strings to valid TaskPriority enum values
+_PRIORITY_MAP = {"low": "Low", "medium": "Medium", "high": "High", "critical": "Critical"}
+
+def _normalize_priority(val, fallback="Medium"):
+    if val is None:
+        return fallback
+    s = str(val).strip().lower()
+    if "." in s:
+        s = s.split(".")[-1].lower()
+    return _PRIORITY_MAP.get(s, fallback)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["agents"])
 
@@ -282,7 +293,7 @@ async def breakdown_task(
                                     subtask = Task(
                                         task_name=st.get("task_name", "Subtask"),
                                         description=st.get("description"),
-                                        priority=st.get("priority", task.priority),
+                                        priority=_normalize_priority(st.get("priority"), task.priority),
                                         due_date=st.get("due_date"),
                                         parent_task_id=task_id,
                                         workspace_id=task.workspace_id,
@@ -326,7 +337,7 @@ async def breakdown_task(
                                 subtask = Task(
                                     task_name=st.get("task_name", "Subtask"),
                                     description=st.get("description"),
-                                    priority=st.get("priority", task.priority),
+                                    priority=_normalize_priority(st.get("priority"), task.priority),
                                     due_date=st.get("due_date"),
                                     parent_task_id=task_id,
                                     workspace_id=task.workspace_id,
