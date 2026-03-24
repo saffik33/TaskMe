@@ -16,14 +16,22 @@ export default function SessionList() {
     try {
       if (searchQuery.trim()) {
         const { data } = await api.searchSessions(searchQuery)
-        setSessions(data)
+        // Search returns messages — deduplicate by session_id into session-like objects
+        const seen = new Map()
+        for (const msg of (Array.isArray(data) ? data : [])) {
+          const sid = msg.session_id
+          if (sid && !seen.has(sid)) {
+            seen.set(sid, { id: sid, agent_id: '', status: 'search_result', turn_count: null })
+          }
+        }
+        setSessions([...seen.values()])
         setHasMore(false)
         setCursor(null)
       } else {
         const params = { limit: 20 }
         if (cursorVal) params.cursor = cursorVal
         const { data } = await api.listSessions(params)
-        const items = data.items || data
+        const items = data.sessions || data
         const nextCursor = data.next_cursor || null
 
         if (cursorVal) {
@@ -113,9 +121,9 @@ export default function SessionList() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {sessions.map((session) => (
-              <tr key={session.session_id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs text-gray-500" title={session.session_id}>
-                  {truncateId(session.session_id)}
+              <tr key={session.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 font-mono text-xs text-gray-500" title={session.id}>
+                  {truncateId(session.id)}
                 </td>
                 <td className="px-4 py-3 text-gray-700 font-mono text-xs">
                   {session.agent_id || '--'}
@@ -135,7 +143,7 @@ export default function SessionList() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
-                    onClick={() => setViewSession(session.session_id)}
+                    onClick={() => setViewSession(session.id)}
                     className="p-1.5 text-gray-400 hover:text-purple-600 rounded"
                     title="View Messages"
                   >
