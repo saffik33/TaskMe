@@ -72,8 +72,10 @@ async def generate_nudge(task: Task) -> str | None:
     try:
         import websockets
 
+        _base = settings.AGENTS_SERVICE_URL.replace('https://', '').replace('http://', '')
+        _scheme = 'wss' if settings.AGENTS_SERVICE_URL.startswith('https') else 'ws'
         url = (
-            f"ws://{settings.AGENTS_SERVICE_URL.replace('http://', '')}"
+            f"{_scheme}://{_base}"
             f"/ws/chat?api_key={settings.AGENTS_API_KEY}&agent_id={AGENT_ID}"
         )
 

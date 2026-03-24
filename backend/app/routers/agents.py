@@ -236,7 +236,9 @@ async def breakdown_task(
     # Open temporary WS to TaskMeAgents
     import websockets
 
-    upstream_url = f"ws://{settings.AGENTS_SERVICE_URL.replace('http://', '')}/ws/chat"
+    _base = settings.AGENTS_SERVICE_URL.replace('https://', '').replace('http://', '')
+    _scheme = 'wss' if settings.AGENTS_SERVICE_URL.startswith('https') else 'ws'
+    upstream_url = f"{_scheme}://{_base}/ws/chat"
     upstream_params = f"?api_key={api_key}&agent_id=task-breakdown"
 
     created_subtasks = []

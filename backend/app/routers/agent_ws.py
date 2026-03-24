@@ -203,7 +203,9 @@ async def agent_chat_ws(ws: WebSocket, task_id: int, token: str):
     # 3. Connect upstream to TaskMeAgents
     import websockets
 
-    upstream_url = f"ws://{settings.AGENTS_SERVICE_URL.replace('http://', '')}/ws/chat"
+    _base = settings.AGENTS_SERVICE_URL.replace('https://', '').replace('http://', '')
+    _scheme = 'wss' if settings.AGENTS_SERVICE_URL.startswith('https') else 'ws'
+    upstream_url = f"{_scheme}://{_base}/ws/chat"
     upstream_params = f"?api_key={api_key}&agent_id={task.agent_id}"
     if task.agent_session_id:
         upstream_params += f"&session_id={task.agent_session_id}"
