@@ -17,6 +17,7 @@ import WorkspaceSwitcher from '../components/WorkspaceSwitcher'
 import MemberList from '../components/MemberList'
 import AgentPanel from '../components/AgentPanel'
 import TaskBreakdown from '../components/TaskBreakdown'
+import AgentActionMenu from '../components/AgentActionMenu'
 import { useAgent } from '../context/AgentContext'
 import { exportExcel, sendNotification } from '../api/tasks'
 
@@ -24,7 +25,7 @@ export default function Dashboard() {
   const { tasks, loading, loadTasks, addTask, editTask, removeTask, removeBulkTasks } = useTasks()
   const { columns } = useColumns()
   const { activeWorkspace, currentUserRole } = useWorkspaces()
-  const { openPanel, bindAgentToTask } = useAgent()
+  const { openPanel, bindAgentToTask, unbindAgentFromTask } = useAgent()
   const canEdit = currentUserRole === 'owner' || currentUserRole === 'editor'
 
   const [view, setView] = useState('table')
@@ -39,6 +40,8 @@ export default function Dashboard() {
   const [columnManagerOpen, setColumnManagerOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [breakdownTask, setBreakdownTask] = useState(null)
+  const [agentMenuTask, setAgentMenuTask] = useState(null)
+  const [agentMenuPos, setAgentMenuPos] = useState(null)
 
   const handleOpenCreate = () => {
     setEditingTask(null)
@@ -54,6 +57,13 @@ export default function Dashboard() {
     try {
       if (editingTask?.id) {
         await editTask(editingTask.id, data)
+        // Handle agent binding change on edit
+        const currentAgentId = editingTask.agent_id
+        if (!agentConfig && currentAgentId) {
+          try { await unbindAgentFromTask(editingTask.id) } catch { /* ignore */ }
+        } else if (agentConfig && agentConfig.agentId !== currentAgentId) {
+          try { await bindAgentToTask(editingTask.id, agentConfig.agentId, agentConfig.mode) } catch { /* ignore */ }
+        }
         toast.success('Task updated')
       } else {
         const newTask = await addTask(data)
@@ -274,6 +284,7 @@ export default function Dashboard() {
           onFieldChange={handleFieldChange}
           onOpenAgent={openPanel}
           onBreakdown={canEdit ? setBreakdownTask : undefined}
+          onOpenAgentMenu={canEdit ? (task, pos) => { setAgentMenuTask(task); setAgentMenuPos(pos) } : undefined}
           rowSelection={canEdit ? rowSelection : {}}
           onRowSelectionChange={canEdit ? setRowSelection : () => {}}
         />
@@ -344,6 +355,18 @@ export default function Dashboard() {
       />
 
       <AgentPanel />
+
+      {agentMenuTask && agentMenuPos && (
+        <AgentActionMenu
+          task={agentMenuTask}
+          position={agentMenuPos}
+          onClose={() => setAgentMenuTask(null)}
+          onBreakdown={(task) => {
+            setAgentMenuTask(null)
+            setBreakdownTask(task)
+          }}
+        />
+      )}
 
       <TaskBreakdown
         task={breakdownTask}

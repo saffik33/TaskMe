@@ -33,7 +33,7 @@ const AGENT_STATUS_COLORS = {
   failed: 'text-red-500',
 }
 
-export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onNotify, onFieldChange, onOpenAgent, onBreakdown, rowSelection, onRowSelectionChange }) {
+export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onNotify, onFieldChange, onOpenAgent, onBreakdown, onOpenAgentMenu, rowSelection, onRowSelectionChange }) {
   const [sorting, setSorting] = useState([])
   const { visibleColumns } = useColumns()
 
@@ -329,14 +329,14 @@ export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onN
               <Mail className="w-4 h-4" />
             </button>
           )}
-          {onBreakdown && (
+          {onOpenAgentMenu && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onBreakdown(row.original)
+                onOpenAgentMenu(row.original, { x: e.clientX, y: e.clientY })
               }}
               className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
-              title="Break down with AI"
+              title="AI Actions"
             >
               <Sparkles className="w-4 h-4" />
             </button>
@@ -346,7 +346,7 @@ export default function TaskTable({ tasks, canEdit = true, onEdit, onDelete, onN
     })
 
     return cols
-  }, [visibleColumns, canEdit, onEdit, onDelete, onNotify, onFieldChange])
+  }, [visibleColumns, canEdit, onEdit, onDelete, onNotify, onFieldChange, onOpenAgentMenu])
 
   const table = useReactTable({
     data: tasks,

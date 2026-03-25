@@ -144,6 +144,13 @@ export function AgentProvider({ children }) {
     loadTasks()
   }, [activeWorkspace, loadTasks])
 
+  const bindAndOpenPanel = useCallback(async (taskId, agentId, task) => {
+    if (!activeWorkspace) return
+    await agentApi.bindAgent(taskId, { agent_id: agentId, mode: 'assistive' }, activeWorkspace.id)
+    loadTasks()
+    openPanel({ ...task, agent_id: agentId, agent_mode: 'assistive', agent_status: 'idle' })
+  }, [activeWorkspace, loadTasks, openPanel])
+
   const unbindAgentFromTask = useCallback(async (taskId) => {
     if (!activeWorkspace) return
     await agentApi.unbindAgent(taskId, activeWorkspace.id)
@@ -167,6 +174,7 @@ export function AgentProvider({ children }) {
         closePanel,
         sendMessage,
         bindAgentToTask,
+        bindAndOpenPanel,
         unbindAgentFromTask,
       }}
     >

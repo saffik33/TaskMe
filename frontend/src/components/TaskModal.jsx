@@ -39,9 +39,14 @@ export default function TaskModal({ open, task, onSave, onClose, onAgentBind }) 
       // Parse existing custom fields
       const cf = task._customFields || (task.custom_fields ? JSON.parse(task.custom_fields) : {})
       setCustomForm(cf)
+    // Pre-populate agent binding on edit
+      setAgentMode(task.agent_mode || 'manual')
+      setAgentId(task.agent_id || 'task-copilot')
     } else {
       setForm(emptyTask)
       setCustomForm({})
+      setAgentMode('manual')
+      setAgentId('task-copilot')
     }
   }, [task])
 
@@ -271,15 +276,13 @@ export default function TaskModal({ open, task, onSave, onClose, onAgentBind }) 
             </div>
           )}
 
-          {/* Agent mode — only for new tasks */}
-          {!isEdit && (
-            <AgentModeSelector
-              mode={agentMode}
-              agentId={agentId}
-              onModeChange={setAgentMode}
-              onAgentChange={setAgentId}
-            />
-          )}
+          {/* Agent mode — shown on create and edit */}
+          <AgentModeSelector
+            mode={agentMode}
+            agentId={agentId}
+            onModeChange={setAgentMode}
+            onAgentChange={setAgentId}
+          />
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button
