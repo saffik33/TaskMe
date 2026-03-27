@@ -184,8 +184,8 @@ export default function AgentForm({ agent, onClose }) {
               >
                 <option value="">Select a model...</option>
                 {models.map(m => (
-                  <option key={m.model_id} value={m.model_id}>
-                    {m.vendor} - {m.name}{m.price_per_1k_tokens ? ` ($${m.price_per_1k_tokens}/1k)` : ''}
+                  <option key={m.id} value={m.id}>
+                    {m.display_name} ({m.vendor}) — ${m.input_price}/${m.output_price} per 1M
                   </option>
                 ))}
               </select>
