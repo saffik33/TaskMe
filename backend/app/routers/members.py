@@ -128,18 +128,24 @@ async def invite_member(workspace_id: int, req: InviteRequest, session: SessionD
             )
         ).first()
         if existing_invite:
-            raise HTTPException(status_code=409, detail="Invite already sent to this email")
+            # Resend: update token, role, timestamp and resend email
+            import uuid
+            existing_invite.token = str(uuid.uuid4())
+            existing_invite.role = req.role
+            session.add(existing_invite)
+            session.commit()
+            invite = existing_invite
+        else:
+            invite = WorkspaceInvite(
+                workspace_id=workspace_id,
+                email=req.email,
+                role=req.role,
+                inviter_id=current_user.id,
+            )
+            session.add(invite)
+            session.commit()
 
-        invite = WorkspaceInvite(
-            workspace_id=workspace_id,
-            email=req.email,
-            role=req.role,
-            inviter_id=current_user.id,
-        )
-        session.add(invite)
-        session.commit()
-
-        # Send invite email to non-existing user
+        # Send invite email
         try:
             import os
             from ..services.email_service import send_workspace_invite_email
@@ -152,8 +158,24 @@ async def invite_member(workspace_id: int, req: InviteRequest, session: SessionD
             print(f"ERROR: Failed to send invite email to {req.email}: {e}")
             logger.error("Failed to send invite email to %s: %s", req.email, str(e))
 
-    # Return same response regardless (email enumeration prevention)
     return {"message": "Invitation sent"}
+
+
+@router.delete("/workspaces/{workspace_id}/invites/{invite_id}")
+def cancel_invite(workspace_id: int, invite_id: int, session: SessionDep, current_user: CurrentUserDep):
+    """Cancel a pending invite."""
+    require_owner(workspace_id, session, current_user)
+    invite = session.exec(
+        select(WorkspaceInvite).where(
+            WorkspaceInvite.id == invite_id,
+            WorkspaceInvite.workspace_id == workspace_id,
+        )
+    ).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    session.delete(invite)
+    session.commit()
+    return {"message": "Invite cancelled"}
 
 
 @router.patch("/workspaces/{workspace_id}/members/{user_id}/role")

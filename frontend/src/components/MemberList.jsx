@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Users, UserPlus, Trash2, Clock, Crown, Pencil, Eye, LogOut } from 'lucide-react'
 import { useWorkspaces } from '../context/WorkspaceContext'
 import { useAuth } from '../context/AuthContext'
+import { cancelInvite as cancelInviteApi } from '../api/workspaces'
 import toast from 'react-hot-toast'
 
 const ROLE_BADGE = {
@@ -11,7 +12,7 @@ const ROLE_BADGE = {
 }
 
 export default function MemberList({ open, onClose }) {
-  const { members, currentUserRole, inviteMember, removeMember, changeMemberRole } = useWorkspaces()
+  const { members, currentUserRole, activeWorkspace, inviteMember, removeMember, changeMemberRole, loadMembers } = useWorkspaces()
   const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('editor')
@@ -137,7 +138,7 @@ export default function MemberList({ open, onClose }) {
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Pending Invites</span>
               </div>
               {pendingList.map((inv, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 opacity-60">
+                <div key={i} className="flex items-center gap-3 py-2 opacity-60 hover:opacity-100 transition-opacity">
                   <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 shrink-0">
                     <Clock className="w-4 h-4" />
                   </div>
@@ -147,6 +148,39 @@ export default function MemberList({ open, onClose }) {
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700">
                     {inv.role}
                   </span>
+                  {isOwner && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await inviteMember(inv.email, inv.role)
+                            toast.success(`Invitation resent to ${inv.email}`)
+                          } catch {
+                            toast.error('Failed to resend invitation')
+                          }
+                        }}
+                        className="text-xs text-purple-600 hover:text-purple-800 font-medium px-1.5 py-0.5 rounded hover:bg-purple-50"
+                        title="Resend invitation"
+                      >
+                        Resend
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await cancelInviteApi(activeWorkspace.id, inv.id)
+                            loadMembers()
+                            toast.success('Invitation cancelled')
+                          } catch {
+                            toast.error('Failed to cancel invitation')
+                          }
+                        }}
+                        className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
+                        title="Cancel invitation"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </>

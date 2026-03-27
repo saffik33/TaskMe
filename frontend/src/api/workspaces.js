@@ -22,4 +22,7 @@ export const removeMember = (workspaceId, userId) =>
 export const changeRole = (workspaceId, userId, role) =>
   client.patch(`/workspaces/${workspaceId}/members/${userId}/role`, { role })
 
+export const cancelInvite = (workspaceId, inviteId) =>
+  client.delete(`/workspaces/${workspaceId}/invites/${inviteId}`)
+
 export const acceptInvite = (token) => client.post(`/invites/${token}/accept`)
