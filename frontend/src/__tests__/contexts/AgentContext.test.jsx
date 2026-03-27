@@ -44,6 +44,7 @@ function TestConsumer() {
   const {
     agentAvailable, templates, activePanel, messages, streaming,
     openPanel, closePanel, sendMessage, bindAgentToTask, unbindAgentFromTask,
+    bindAndOpenPanel,
   } = useAgent()
 
   return (
@@ -59,6 +60,7 @@ function TestConsumer() {
       <button data-testid="send-empty" onClick={() => sendMessage('')}>SendEmpty</button>
       <button data-testid="bind" onClick={() => bindAgentToTask(1, 'task-copilot', 'assistive')}>Bind</button>
       <button data-testid="unbind" onClick={() => unbindAgentFromTask(1)}>Unbind</button>
+      <button data-testid="bind-and-open" onClick={() => bindAndOpenPanel(1, 'task-copilot', { id: 1, task_name: 'Test' })}>BindOpen</button>
     </div>
   )
 }
@@ -170,5 +172,37 @@ describe('AgentContext', () => {
       screen.getByTestId('unbind').click()
     })
     expect(agentsApi.unbindAgent).toHaveBeenCalledWith(1, 1)
+  })
+
+  it('unbindAgentFromTask closes panel', async () => {
+    renderWithProvider()
+    await waitFor(() => expect(screen.getByTestId('available')).toHaveTextContent('yes'))
+
+    act(() => screen.getByTestId('open-panel').click())
+    expect(screen.getByTestId('panel-open')).toHaveTextContent('open')
+
+    await act(async () => {
+      screen.getByTestId('unbind').click()
+    })
+    expect(screen.getByTestId('panel-open')).toHaveTextContent('closed')
+  })
+
+  it('bindAndOpenPanel binds agent and opens panel', async () => {
+    renderWithProvider()
+    await waitFor(() => expect(screen.getByTestId('available')).toHaveTextContent('yes'))
+
+    await act(async () => {
+      screen.getByTestId('bind-and-open').click()
+    })
+    expect(agentsApi.bindAgent).toHaveBeenCalledWith(1, { agent_id: 'task-copilot', mode: 'assistive' }, 1)
+    expect(screen.getByTestId('panel-open')).toHaveTextContent('open')
+  })
+
+  it('health check failure sets agentAvailable to false', async () => {
+    agentsApi.checkAgentHealth.mockRejectedValue(new Error('network'))
+    renderWithProvider()
+    await waitFor(() => {
+      expect(screen.getByTestId('available')).toHaveTextContent('no')
+    })
   })
 })
