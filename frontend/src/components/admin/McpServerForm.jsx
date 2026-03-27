@@ -67,7 +67,7 @@ export default function McpServerForm({ server, onClose }) {
 
     const payload = {
       ...form,
-      port: parseInt(form.port, 10),
+      port: form.port.trim(),
     }
 
     setSubmitting(true)
