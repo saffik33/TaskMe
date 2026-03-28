@@ -270,6 +270,35 @@ async def agent_chat_ws(ws: WebSocket, task_id: int, token: str):
                         await _save_session_id(task_id, sid)
                         session_saved = True
 
+                # Auto-approve tool_approval_request for local tools
+                if msg_type == "tool_approval_request" and msg.get("tool_name") in LOCAL_TOOLS:
+                    tool_name = msg["tool_name"]
+                    tool_use_id = msg.get("tool_use_id", "")
+                    params = msg.get("parameters", {})
+
+                    # Auto-approve
+                    await upstream.send(json.dumps({
+                        "type": "server_tool_approval",
+                        "tool_use_id": tool_use_id,
+                        "tool_name": tool_name,
+                        "approved": True,
+                    }))
+
+                    # Execute locally
+                    result = await _execute_local_tool(task_id, tool_name, params)
+
+                    # Send result to frontend
+                    await ws.send_json({
+                        "type": "tool_result",
+                        "tool_name": tool_name,
+                        "tool_use_id": tool_use_id,
+                        "success": result.get("success", False),
+                        "content": result.get("message", ""),
+                        "data": result,
+                        "was_auto_approved": True,
+                    })
+                    continue
+
                 # Intercept client tool execution requests
                 if msg_type == "tool_execution_request" and msg.get("tool_name") in LOCAL_TOOLS:
                     tool_name = msg["tool_name"]
