@@ -62,7 +62,7 @@ def list_members(workspace_id: int, session: SessionDep, current_user: CurrentUs
         select(WorkspaceInvite).where(WorkspaceInvite.workspace_id == workspace_id)
     ).all()
     pending = [
-        {"email": inv.email, "role": inv.role, "created_at": inv.created_at.isoformat() if inv.created_at else None}
+        {"id": inv.id, "email": inv.email, "role": inv.role, "created_at": inv.created_at.isoformat() if inv.created_at else None}
         for inv in invites
     ]
 

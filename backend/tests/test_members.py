@@ -156,3 +156,46 @@ def test_cannot_accept_invite_for_different_email(client, session, user_a, user_
                        headers=user_c["headers"])
     assert resp.status_code == 403
     assert "different email" in resp.json()["detail"].lower()
+
+
+def test_pending_invites_include_id(client, session, user_a):
+    """Pending invites response must include the invite id for cancel to work."""
+    invite = WorkspaceInvite(
+        workspace_id=user_a["workspace"].id,
+        email="someone@test.com", role="viewer",
+        inviter_id=user_a["user"].id,
+        token="id-check-token",
+    )
+    session.add(invite)
+    session.commit()
+
+    resp = client.get(f"/api/v1/workspaces/{user_a['workspace'].id}/members",
+                      headers=user_a["headers"])
+    assert resp.status_code == 200
+    pending = resp.json()["pending_invites"]
+    assert len(pending) == 1
+    assert "id" in pending[0]
+    assert isinstance(pending[0]["id"], int)
+
+
+def test_cancel_invite(client, session, user_a):
+    """Owner can cancel a pending invite."""
+    invite = WorkspaceInvite(
+        workspace_id=user_a["workspace"].id,
+        email="cancel-me@test.com", role="editor",
+        inviter_id=user_a["user"].id,
+        token="cancel-token",
+    )
+    session.add(invite)
+    session.commit()
+    session.refresh(invite)
+
+    resp = client.delete(
+        f"/api/v1/workspaces/{user_a['workspace'].id}/invites/{invite.id}",
+        headers=user_a["headers"])
+    assert resp.status_code == 200
+
+    # Verify invite is gone
+    members = client.get(f"/api/v1/workspaces/{user_a['workspace'].id}/members",
+                         headers=user_a["headers"]).json()
+    assert len(members["pending_invites"]) == 0
