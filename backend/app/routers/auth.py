@@ -9,6 +9,8 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlmodel import select
 
+from sqlalchemy import func
+
 from ..auth import create_access_token, hash_password, verify_password
 from ..config import settings
 from ..database import SessionDep, seed_core_columns_for_user
@@ -34,6 +36,56 @@ def _validate_password_complexity(password: str) -> str | None:
 
 def _get_frontend_url() -> str:
     return os.getenv("FRONTEND_URL", settings.FRONTEND_URL)
+
+
+def _accept_pending_invites(session, user):
+    """Auto-accept any pending workspace invites for this user's email."""
+    from ..models.workspace import WorkspaceMember, WorkspaceInvite
+    from ..database import seed_core_columns_for_workspace
+
+    try:
+        invites = session.exec(
+            select(WorkspaceInvite).where(
+                func.lower(WorkspaceInvite.email) == func.lower(user.email)
+            )
+        ).all()
+        for invite in invites:
+            if invite.expires_at:
+                exp = invite.expires_at if invite.expires_at.tzinfo else invite.expires_at.replace(tzinfo=timezone.utc)
+                if exp < datetime.now(timezone.utc):
+                    session.delete(invite)
+                    session.commit()
+                    continue
+
+            existing = session.exec(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == invite.workspace_id,
+                    WorkspaceMember.user_id == user.id,
+                )
+            ).first()
+            if existing:
+                session.delete(invite)
+                session.commit()
+                continue
+
+            ws_id = invite.workspace_id
+            role = invite.role
+            inviter = invite.inviter_id
+
+            member = WorkspaceMember(
+                workspace_id=ws_id,
+                user_id=user.id,
+                role=role,
+                inviter_id=inviter,
+            )
+            session.add(member)
+            session.delete(invite)
+            session.commit()
+            seed_core_columns_for_workspace(session, ws_id, user.id)
+            logger.info("Auto-accepted invite: user %s added to workspace %d as %s", user.email, ws_id, role)
+    except Exception as e:
+        session.rollback()
+        logger.error("Failed to process pending invites for %s: %s", user.email, e)
 
 
 async def _send_verification(user: User):
@@ -156,6 +208,8 @@ def login(credentials: UserLogin, session: SessionDep):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email before logging in. Check your inbox for the verification link.",
         )
+
+    _accept_pending_invites(session, user)
 
     token = create_access_token(data={"sub": user.username, "user_id": user.id})
     return {
@@ -289,6 +343,8 @@ def google_callback(code: str, session: SessionDep, state: str = None):
             session.add(user)
             session.commit()
 
+    _accept_pending_invites(session, user)
+
     # Generate JWT token
     token = create_access_token(data={"sub": user.username, "user_id": user.id})
 
@@ -410,6 +466,8 @@ def microsoft_callback(code: str, session: SessionDep, state: str = None):
             user.email_verified = True
             session.add(user)
             session.commit()
+
+    _accept_pending_invites(session, user)
 
     # Generate JWT token
     token = create_access_token(data={"sub": user.username, "user_id": user.id})

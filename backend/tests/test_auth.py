@@ -1,4 +1,8 @@
 """P0 — Auth & Security tests."""
+from datetime import datetime, timezone
+
+from sqlmodel import select
+
 from tests.conftest import _create_user
 
 
@@ -199,3 +203,146 @@ def test_register_missing_lowercase(client):
     })
     assert resp.status_code == 400
     assert "lowercase" in resp.json()["detail"].lower()
+
+
+# --- Auto-accept pending invites on login ---
+
+def test_login_auto_accepts_pending_invite(client, session):
+    """User with a pending WorkspaceInvite should auto-join the workspace on login."""
+    from app.models.workspace import Workspace, WorkspaceMember, WorkspaceInvite
+    from app.database import seed_core_columns_for_workspace
+
+    # Create inviter + workspace
+    inviter = _create_user(session, "inviter", "inviter@test.com", verified=True)
+    ws = Workspace(name="Team Workspace", owner_id=inviter.id)
+    session.add(ws)
+    session.commit()
+    session.refresh(ws)
+    member = WorkspaceMember(workspace_id=ws.id, user_id=inviter.id, role="owner")
+    session.add(member)
+    session.commit()
+
+    # Create the invitee (registered, verified, but NOT a member of ws)
+    invitee = _create_user(session, "invitee", "invitee@test.com", verified=True)
+
+    # Create pending invite for invitee's email
+    invite = WorkspaceInvite(
+        workspace_id=ws.id,
+        email="invitee@test.com",
+        role="editor",
+        inviter_id=inviter.id,
+        token="auto-accept-token",
+    )
+    session.add(invite)
+    session.commit()
+
+    # Login as invitee
+    resp = client.post("/api/v1/auth/login", json={
+        "username": "invitee", "password": "Test1234",
+    })
+    assert resp.status_code == 200
+
+    # Verify invitee is now a member of the workspace
+    membership = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == ws.id,
+            WorkspaceMember.user_id == invitee.id,
+        )
+    ).first()
+    assert membership is not None
+    assert membership.role == "editor"
+
+    # Verify invite was deleted
+    remaining = session.exec(
+        select(WorkspaceInvite).where(WorkspaceInvite.token == "auto-accept-token")
+    ).first()
+    assert remaining is None
+
+
+def test_login_skips_expired_invite(client, session):
+    """Expired invites should be deleted but not create membership."""
+    from datetime import timedelta
+    from app.models.workspace import Workspace, WorkspaceMember, WorkspaceInvite
+
+    inviter = _create_user(session, "inviter2", "inviter2@test.com", verified=True)
+    ws = Workspace(name="Expired WS", owner_id=inviter.id)
+    session.add(ws)
+    session.commit()
+    session.refresh(ws)
+    session.add(WorkspaceMember(workspace_id=ws.id, user_id=inviter.id, role="owner"))
+    session.commit()
+
+    invitee = _create_user(session, "invitee2", "invitee2@test.com", verified=True)
+
+    invite = WorkspaceInvite(
+        workspace_id=ws.id,
+        email="invitee2@test.com",
+        role="editor",
+        inviter_id=inviter.id,
+        token="expired-auto-token",
+        expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+    )
+    session.add(invite)
+    session.commit()
+
+    resp = client.post("/api/v1/auth/login", json={
+        "username": "invitee2", "password": "Test1234",
+    })
+    assert resp.status_code == 200
+
+    # No membership created
+    membership = session.exec(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == ws.id,
+            WorkspaceMember.user_id == invitee.id,
+        )
+    ).first()
+    assert membership is None
+
+    # Invite was cleaned up
+    remaining = session.exec(
+        select(WorkspaceInvite).where(WorkspaceInvite.token == "expired-auto-token")
+    ).first()
+    assert remaining is None
+
+
+def test_login_cleans_up_duplicate_invite(client, session):
+    """If user is already a member, pending invite should be deleted without error."""
+    from app.models.workspace import Workspace, WorkspaceMember, WorkspaceInvite
+    from app.database import seed_core_columns_for_workspace
+
+    inviter = _create_user(session, "inviter3", "inviter3@test.com", verified=True)
+    ws = Workspace(name="Dup WS", owner_id=inviter.id)
+    session.add(ws)
+    session.commit()
+    session.refresh(ws)
+    session.add(WorkspaceMember(workspace_id=ws.id, user_id=inviter.id, role="owner"))
+    session.commit()
+
+    invitee = _create_user(session, "invitee3", "invitee3@test.com", verified=True)
+
+    # Add invitee as member first
+    session.add(WorkspaceMember(workspace_id=ws.id, user_id=invitee.id, role="editor"))
+    session.commit()
+
+    # Create orphaned invite (shouldn't exist, but could from a race condition)
+    invite = WorkspaceInvite(
+        workspace_id=ws.id,
+        email="invitee3@test.com",
+        role="viewer",
+        inviter_id=inviter.id,
+        token="dup-token",
+    )
+    session.add(invite)
+    session.commit()
+
+    resp = client.post("/api/v1/auth/login", json={
+        "username": "invitee3", "password": "Test1234",
+    })
+    assert resp.status_code == 200
+
+    # Invite was cleaned up
+    remaining = session.exec(
+        select(WorkspaceInvite).where(WorkspaceInvite.token == "dup-token")
+    ).first()
+    assert remaining is None
