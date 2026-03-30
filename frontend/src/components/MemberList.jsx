@@ -168,7 +168,7 @@ export default function MemberList({ open, onClose }) {
                         onClick={async () => {
                           try {
                             await cancelInviteApi(activeWorkspace.id, inv.id)
-                            loadMembers()
+                            loadMembers(activeWorkspace.id)
                             toast.success('Invitation cancelled')
                           } catch {
                             toast.error('Failed to cancel invitation')
